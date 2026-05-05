@@ -9,10 +9,6 @@
     {
       "url": "https://dehumidifier-api.ldpgroup.co.id",
       "description": "Devel Environment"
-    },
-    {
-      "url": "http://localhost:3000",
-      "description": "Localhost Only"
     }
   ],
   "tags": [
@@ -2395,7 +2391,7 @@
         }
       }
     },
-    "/api/v1/projects/{project_id}/status": {
+    "/api/v1/projects/{id}/status": {
       "patch": {
         "tags": [
           "Projects"
