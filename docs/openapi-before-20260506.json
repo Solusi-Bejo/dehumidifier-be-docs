@@ -2,17 +2,13 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.0Rc4",
+    "version": "1.0Rc1",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
     {
       "url": "https://dehumidifier-api.ldpgroup.co.id",
       "description": "Devel Environment"
-    },
-    {
-      "url": "http://localhost:3000",
-      "description": "Localhost Only"
     }
   ],
   "tags": [
@@ -1570,115 +1566,6 @@
       }
     },
     "/api/v1/projects": {
-      "post": {
-        "tags": [
-          "Project Information"
-        ],
-        "summary": "Create project",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-Debug-User-Id",
-            "required": false,
-            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectCreateRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                },
-                "example": {
-                  "status_code": 201,
-                  "api_version": "1.0.0",
-                  "data": {
-                    "message": "Project successfully created"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
       "get": {
         "tags": [
           "Projects"
@@ -1799,7 +1686,7 @@
           {
             "in": "query",
             "name": "sort_by",
-            "description": "Available fields to sort by: `id`, `project_name`, `project_code`, `status`, `calculation_date`, `created_at`, `updated_at`. Please input keyword to search in those fields (Optional).",
+            "description": "Available fields to sort by: `id`, `project_name`, `project_code`, `priority`. Please input keyword to search in those fields (Optional).",
             "required": false,
             "schema": {
               "type": "string"
@@ -1820,16 +1707,12 @@
           },
           {
             "in": "query",
-            "name": "status",
+            "name": "priorities",
             "required": false,
-            "description": "Filter projects by quotation status. Allowed values: `tender`, `won`, `lost` (Optional).",
+            "description": "Filter projects by one or more priority values. Send multiple values as a comma-separated string. Allowed values: `high`, `medium`, `low`. Example: `high,medium`. This query strings are optional.",
             "schema": {
               "type": "string",
-              "enum": [
-                "tender",
-                "won",
-                "lost"
-              ]
+              "example": "high,medium"
             }
           },
           {
@@ -1873,7 +1756,296 @@
         ]
       }
     },
-    "/api/v1/projects/{id}/favorite": {
+    "/api/v1/projects/{project_id}": {
+      "get": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Get project detail",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            },
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseSuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ProjectDetail"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Update project",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            },
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseSuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ActionMessage"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "status_code": 200,
+                  "api_version": "1.0.0",
+                  "data": {
+                    "message": "Project successfully updated"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Projects"
+        ],
+        "summary": "Soft delete project",
+        "description": "Marks the project as deleted using soft delete behavior.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseSuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ActionMessage"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "status_code": 200,
+                  "api_version": "1.0.0",
+                  "data": {
+                    "message": "Project successfully deleted"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{project_id}/favorite": {
       "post": {
         "tags": [
           "Projects"
@@ -2095,13 +2267,84 @@
         }
       }
     },
-    "/api/v1/projects/{id}": {
-      "delete": {
+    "/api/v1/projects/favorites": {
+      "get": {
         "tags": [
           "Projects"
         ],
-        "summary": "Soft delete project",
-        "description": "Marks the project as deleted using soft delete behavior.",
+        "summary": "List favorite projects",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          }
+        },
         "parameters": [
           {
             "in": "header",
@@ -2114,58 +2357,57 @@
             }
           },
           {
-            "$ref": "#/components/parameters/IdPath"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                },
-                "example": {
-                  "status_code": 200,
-                  "api_version": "1.0.0",
-                  "data": {
-                    "message": "Project successfully deleted"
-                  }
-                }
-              }
+            "in": "query",
+            "name": "page",
+            "description": "This is for pagination, please input page number to get the corresponding data (Default: 1).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 1
             }
           },
-          "400": {
-            "$ref": "#/components/responses/ValidationError"
+          {
+            "in": "query",
+            "name": "limit",
+            "description": "This is for Limit and offset pagination, please input number of data to be shown in one page (Default: 10).",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
           },
-          "401": {
-            "$ref": "#/components/responses/UnauthorizedError"
+          {
+            "in": "query",
+            "name": "search",
+            "description": "Available fields to search by: `name`, `email`, `user_code`. Please input keyword to search in those fields (Optional).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           },
-          "403": {
-            "$ref": "#/components/responses/ForbiddenError"
+          {
+            "in": "query",
+            "name": "sort_by",
+            "description": "Available fields to sort by: `id`, `name`, `user_code`, `email`, `role`, `is_active`, `created_at`, `updated_at`. Please choose one to sort by (Optional).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
           },
-          "404": {
-            "$ref": "#/components/responses/NotFoundError"
-          },
-          "409": {
-            "$ref": "#/components/responses/ConflictError"
-          },
-          "500": {
-            "$ref": "#/components/responses/InternalServerError"
+          {
+            "in": "query",
+            "name": "sort_order",
+            "required": false,
+            "description": "Available fields to sort order: `asc`, `desc`. Please choose one to sort order (Optional).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
           }
-        }
+        ]
       }
     },
     "/api/v1/projects/{project_id}/information": {
@@ -2327,130 +2569,6 @@
                   "api_version": "1.0.0",
                   "data": {
                     "message": "Project Information successfully updated"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Validation error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/projects/{project_id}/status": {
-      "patch": {
-        "tags": [
-          "Projects"
-        ],
-        "summary": "Update project status",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-Debug-User-Id",
-            "required": false,
-            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
-            "schema": {
-              "type": "integer",
-              "example": 1
-            }
-          },
-          {
-            "$ref": "#/components/parameters/ProjectIdPath"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ProjectStatusRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                },
-                "example": {
-                  "status_code": 200,
-                  "api_version": "1.0Rc3",
-                  "data": {
-                    "message": "Project status successfully updated"
                   }
                 }
               }
@@ -3102,11 +3220,6 @@
                   }
                 }
               }
-            },
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ReportSettingRequest"
-              }
             }
           }
         },
@@ -3618,6 +3731,77 @@
                 }
               }
             }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Quotations"
+        ],
+        "summary": "Soft delete quotation",
+        "description": "Marks the quotation as deleted using soft delete behavior.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProjectIdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseSuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ActionMessage"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "status_code": 200,
+                  "api_version": "1.0.0",
+                  "data": {
+                    "message": "Quotation data successfully deleted"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "403": {
+            "$ref": "#/components/responses/ForbiddenError"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          },
+          "409": {
+            "$ref": "#/components/responses/ConflictError"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalServerError"
           }
         }
       }
@@ -6776,48 +6960,23 @@
         }
       },
       "ProjectListItem": {
-        "type": "object",
-        "properties": {
-          "project_code": {
-            "type": "string"
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Project"
           },
-          "project_name": {
-            "type": "string"
-          },
-          "selection_no": {
-            "type": "string",
-            "nullable": true
-          },
-          "status": {
-            "type": "string",
-            "nullable": true,
-            "enum": [
-              "tender",
-              "won",
-              "lost"
-            ]
-          },
-          "calculation_date": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
-          },
-          "owner_user_id": {
-            "type": "integer",
-            "nullable": true
-          },
-          "owner_name": {
-            "type": "string",
-            "nullable": true
-          },
-          "owner_avatar": {
-            "type": "string",
-            "nullable": true
-          },
-          "is_favorite": {
-            "type": "boolean"
+          {
+            "type": "object",
+            "properties": {
+              "owner_name": {
+                "type": "string",
+                "nullable": true
+              },
+              "is_favorite": {
+                "type": "boolean"
+              }
+            }
           }
-        }
+        ]
       },
       "ProjectInformation": {
         "type": "object",
@@ -6860,59 +7019,6 @@
       },
       "ProjectInformationRequest": {
         "$ref": "#/components/schemas/ProjectInformation"
-      },
-      "ProjectCreateRequest": {
-        "type": "object",
-        "required": [
-          "project_name"
-        ],
-        "properties": {
-          "project_name": {
-            "type": "string"
-          },
-          "pic_name": {
-            "type": "string",
-            "nullable": true
-          },
-          "company_name": {
-            "type": "string",
-            "nullable": true
-          },
-          "address": {
-            "type": "string",
-            "nullable": true
-          },
-          "reference_no": {
-            "type": "string",
-            "nullable": true
-          },
-          "tax_percent": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "quotation_date": {
-            "type": "string",
-            "format": "date",
-            "nullable": true
-          }
-        }
-      },
-      "ProjectStatusRequest": {
-        "type": "object",
-        "required": [
-          "status"
-        ],
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "tender",
-              "won",
-              "lost"
-            ]
-          }
-        }
       },
       "SaveCalculationProjectInformationRequest": {
         "type": "object",
@@ -7083,13 +7189,8 @@
           {
             "type": "object",
             "properties": {
-              "status": {
-                "type": "string",
-                "enum": [
-                  "tender",
-                  "won",
-                  "lost"
-                ]
+              "priority": {
+                "type": "string"
               },
               "owner_user_id": {
                 "type": "integer"
@@ -8100,13 +8201,8 @@
           "selection_no": {
             "type": "string"
           },
-          "status": {
-            "type": "string",
-            "enum": [
-              "tender",
-              "won",
-              "lost"
-            ]
+          "priority": {
+            "type": "string"
           },
           "calculation_date": {
             "type": "string",
