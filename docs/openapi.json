@@ -6774,6 +6774,9 @@
       "ProjectListItem": {
         "type": "object",
         "properties": {
+          "project_id": {
+            "type": "number"
+          },
           "project_code": {
             "type": "string"
           },
