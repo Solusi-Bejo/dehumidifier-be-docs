@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.0Rc4",
+    "version": "1.0Rc5",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
