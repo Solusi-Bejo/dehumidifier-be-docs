@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.0Rc5",
+    "version": "1.0Rc6",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
@@ -1818,15 +1818,24 @@
             "in": "query",
             "name": "status",
             "required": false,
-            "description": "Filter projects by quotation status. Allowed values: `tender`, `won`, `lost` (Optional).",
+            "description": "Filter projects by quotation status. Allowed values per item: `tender`, `won`, `lost`. Send as comma-separated query string, for example `status=tender,won` (Optional).",
+            "style": "form",
+            "explode": false,
             "schema": {
-              "type": "string",
-              "enum": [
-                "tender",
-                "won",
-                "lost"
-              ]
-            }
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "tender",
+                  "won",
+                  "lost"
+                ]
+              }
+            },
+            "example": [
+              "tender",
+              "won"
+            ]
           },
           {
             "in": "query",
