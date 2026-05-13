@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.0Rc6",
+    "version": "1.0Rc7",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
@@ -1795,7 +1795,7 @@
           {
             "in": "query",
             "name": "sort_by",
-            "description": "Available fields to sort by: `id`, `project_name`, `project_code`, `status`, `calculation_date`, `created_at`, `updated_at`. Please input keyword to search in those fields (Optional).",
+            "description": "Available fields to sort by: `id`, `project_name`, `owner_name`, `selection_no`, `project_code`, `status`, `calculation_date`. Please input keyword to search in those fields (Optional).",
             "required": false,
             "schema": {
               "type": "string"
