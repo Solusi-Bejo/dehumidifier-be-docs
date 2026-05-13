@@ -1893,7 +1893,9 @@
             "schema": {
               "type": "integer",
               "example": 1
-            },
+            }
+          },
+          {
             "$ref": "#/components/parameters/IdPath"
           }
         ],
@@ -2003,7 +2005,9 @@
             "schema": {
               "type": "integer",
               "example": 1
-            },
+            }
+          },
+          {
             "$ref": "#/components/parameters/IdPath"
           }
         ],
@@ -2115,7 +2119,9 @@
             "schema": {
               "type": "integer",
               "example": 1
-            },
+            }
+          },
+          {
             "$ref": "#/components/parameters/IdPath"
           }
         ],
