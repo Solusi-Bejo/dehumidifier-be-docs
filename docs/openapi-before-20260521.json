@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.0Rc9",
+    "version": "1.0Rc8",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
@@ -2632,7 +2632,7 @@
           "Dehumidifier Calculation"
         ],
         "summary": "Save dehumidifier calculation aggregate request",
-        "description": "Main entry endpoint for creating a calculator project and its related data. It generates the project structure, inserts default related records, and persists both raw inputs and calculated result values provided by the frontend.",
+        "description": "Main entry endpoint for creating a calculator project and its related data. It generates the project structure, and optionally inserts a default quotation record. The backend also fills several system-managed fields automatically, such as project priority, owner, calculation date, calculation status, and quotation date.",
         "parameters": [
           {
             "in": "header",
@@ -2851,9 +2851,7 @@
             "schema": {
               "type": "integer",
               "example": 1
-            }
-          },
-          {
+            },
             "$ref": "#/components/parameters/IdPath"
           }
         ],
@@ -3207,9 +3205,6 @@
                     "type": "string"
                   },
                   "header_title": {
-                    "type": "string"
-                  },
-                  "website_url": {
                     "type": "string"
                   }
                 }
@@ -7122,6 +7117,14 @@
             "type": "string",
             "nullable": true
           },
+          "flow_system_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "flow_system_name": {
+            "type": "string",
+            "nullable": true
+          },
           "selected_model_id": {
             "type": "integer",
             "nullable": true
@@ -7141,70 +7144,6 @@
           },
           "qty": {
             "type": "integer",
-            "nullable": true
-          },
-          "permeation_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "door_opening_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "fixed_opening_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "people_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "product_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "make_up_air_intake_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "other_sources_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "total_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "dehumidifier_required": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "dehumidifier_required_unit_type": {
-            "type": "string",
-            "nullable": true
-          },
-          "total_air_flow": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "total_capacity": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "precooling_capacity": {
-            "type": "number",
-            "format": "float",
             "nullable": true
           }
         }
@@ -7568,75 +7507,6 @@
               "system_efficiency_modifier": {
                 "type": "number",
                 "format": "float"
-              },
-              "qty": {
-                "type": "integer",
-                "nullable": true
-              },
-              "permeation_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "door_opening_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "fixed_opening_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "people_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "product_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "make_up_air_intake_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "other_sources_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "total_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "dehumidifier_required": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "dehumidifier_required_unit_type": {
-                "type": "string",
-                "nullable": true,
-                "example": "CMH"
-              },
-              "total_air_flow": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "total_capacity": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "precooling_capacity": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
               }
             }
           },
@@ -7662,21 +7532,7 @@
             "room_name": "Dry Room 1",
             "flow_air_system_id": 1,
             "selected_model_id": 5,
-            "system_efficiency_modifier": 0.95,
-            "qty": 2,
-            "permeation_load": 1000,
-            "door_opening_load": 950,
-            "fixed_opening_load": 800,
-            "people_load": 300,
-            "product_load": 450,
-            "make_up_air_intake_load": 2200,
-            "other_sources_load": 175,
-            "total_load": 5875,
-            "dehumidifier_required": 3200,
-            "dehumidifier_required_unit_type": "CMH",
-            "total_air_flow": 3200,
-            "total_capacity": 24.1,
-            "precooling_capacity": 200000
+            "system_efficiency_modifier": 0.95
           },
           "inputs": {
             "room_zone_type": "l_m_x_w_m_x_h_m",
@@ -7740,8 +7596,7 @@
           "project": {
             "type": "object",
             "required": [
-              "project_name",
-              "priority"
+              "project_name"
             ],
             "properties": {
               "project_name": {
@@ -7780,71 +7635,6 @@
                 "type": "integer",
                 "nullable": true
               },
-              "permeation_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "door_opening_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "fixed_opening_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "people_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "product_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "make_up_air_intake_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "other_sources_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "total_load": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "dehumidifier_required": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "dehumidifier_required_unit_type": {
-                "type": "string",
-                "nullable": true,
-                "example": "CMH"
-              },
-              "total_air_flow": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "total_capacity": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
-              "precooling_capacity": {
-                "type": "number",
-                "format": "float",
-                "nullable": true
-              },
               "status": {
                 "type": "string",
                 "description": "Provided by frontend during full update, usually sourced from calculation detail."
@@ -7853,91 +7643,6 @@
           },
           "inputs": {
             "$ref": "#/components/schemas/CalculationInputs"
-          }
-        },
-        "example": {
-          "project": {
-            "project_name": "Eka Hospital",
-            "priority": "medium"
-          },
-          "project_information": {
-            "pic_name": "Budi",
-            "company_name": "PT Eka Hospital",
-            "address": "Jakarta",
-            "reference_no": "REF-001-REV",
-            "tax_percent": 11,
-            "creator_name": "Haris",
-            "creator_position": "Sales Engineer"
-          },
-          "calculation": {
-            "title": "Main Calculation Rev 1",
-            "room_name": "Dry Room 1",
-            "flow_air_system_id": 1,
-            "selected_model_id": 5,
-            "system_efficiency_modifier": 0.95,
-            "qty": 2,
-            "permeation_load": 1000,
-            "door_opening_load": 950,
-            "fixed_opening_load": 800,
-            "people_load": 300,
-            "product_load": 450,
-            "make_up_air_intake_load": 2200,
-            "other_sources_load": 175,
-            "total_load": 5875,
-            "dehumidifier_required": 3200,
-            "dehumidifier_required_unit_type": "CMH",
-            "total_air_flow": 3200,
-            "total_capacity": 24.1,
-            "precooling_capacity": 200000,
-            "status": "completed"
-          },
-          "inputs": {
-            "room_zone_type": "l_m_x_w_m_x_h_m",
-            "outside_condition_type": "tdb_c_twb_c",
-            "surround_condition_type": "tdb_c_rh",
-            "target_room_condition_type": "tdb_c_rh",
-            "fixed_intentional_opening_type": "l_m_x_w_m_x_d_m",
-            "additional_moisture_type": "tdb_c_twb_c",
-            "room_zone_length": 14,
-            "room_zone_width": 9,
-            "room_zone_height": 4.5,
-            "altitude": 30,
-            "outside_condition_tdb": 34,
-            "outside_condition_twb": 27,
-            "outside_condition_rh": null,
-            "surround_condition_tdb": 30,
-            "surround_condition_twb": null,
-            "surround_condition_rh": 62,
-            "target_room_condition_tdb": 22,
-            "target_room_condition_rh": 35,
-            "target_room_condition_tdp": null,
-            "target_room_condition_coeff_3": 0.1234,
-            "target_room_condition_coeff_4": 0.2345,
-            "target_room_condition_coeff_5": 0.3456,
-            "door_area": 6,
-            "door_area_unit": "m2",
-            "door_opening_frequency": 10,
-            "occupant": 6,
-            "intentional_opening_length": 2,
-            "intentional_opening_width": 1.5,
-            "intentional_opening_height": null,
-            "intentional_opening_area": null,
-            "intentional_opening_depth": 2.2,
-            "w_adjacent_room": 175,
-            "w_adjacent_room_unit": "lb/hr",
-            "product": 95,
-            "product_unit": "lb/hr",
-            "moisture_lost_percentage": 4.5,
-            "fresh_air_flow_rate": 1400,
-            "fresh_air_flow_rate_unit": "CFM",
-            "fresh_air_flow_tdb": 12,
-            "fresh_air_flow_twb": 10,
-            "fresh_air_flow_rh": null,
-            "other_sources": 90,
-            "other_sources_unit": "CFM",
-            "other_sources_tdb": 11,
-            "other_sources_twb": 9,
-            "other_sources_rh": null
           }
         }
       },
@@ -7986,21 +7691,15 @@
           },
           "header_title": {
             "type": "string"
-          },
-          "website_url": {
-            "type": "string"
           }
-        },
-        "example": {
-          "remove_logo": false,
-          "primary_color": "#2876C1",
-          "header_title": "Calculation Sheet",
-          "website_url": "www.shitsudo.com"
         }
       },
       "ReportSetting": {
         "type": "object",
         "properties": {
+          "report_type": {
+            "type": "string"
+          },
           "logo_url": {
             "type": "string",
             "nullable": true
@@ -8010,10 +7709,6 @@
             "nullable": true
           },
           "header_title": {
-            "type": "string",
-            "nullable": true
-          },
-          "website_url": {
             "type": "string",
             "nullable": true
           }
@@ -8107,70 +7802,6 @@
           },
           "qty": {
             "type": "integer",
-            "nullable": true
-          },
-          "permeation_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "door_opening_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "fixed_opening_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "people_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "product_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "make_up_air_intake_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "other_sources_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "total_load": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "dehumidifier_required": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "dehumidifier_required_unit_type": {
-            "type": "string",
-            "nullable": true
-          },
-          "total_air_flow": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "total_capacity": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "precooling_capacity": {
-            "type": "number",
-            "format": "float",
             "nullable": true
           }
         }
