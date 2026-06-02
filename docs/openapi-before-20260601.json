@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.0Rc11",
+    "version": "1.0Rc9",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
@@ -7330,10 +7330,6 @@
             "type": "string",
             "nullable": true
           },
-          "total_load_unit_type": {
-            "type": "string",
-            "nullable": true
-          },
           "room_zone_length": {
             "type": "number",
             "format": "float",
@@ -7384,11 +7380,6 @@
             "format": "float",
             "nullable": true
           },
-          "surround_condition_w": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
           "target_room_condition_tdb": {
             "type": "number",
             "format": "float",
@@ -7400,21 +7391,6 @@
             "nullable": true
           },
           "target_room_condition_tdp": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "target_room_condition_w": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "target_room_condition_coeff_1": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "target_room_condition_coeff_2": {
             "type": "number",
             "format": "float",
             "nullable": true
@@ -7709,7 +7685,6 @@
             "target_room_condition_type": "tdb_c_tdp_c",
             "fixed_intentional_opening_type": "a_m2_x_d_m",
             "additional_moisture_type": "tdb_c_rh",
-            "total_load_unit_type": "total_load_unit_type",
             "room_zone_length": 12,
             "room_zone_width": 8,
             "room_zone_height": 4,
@@ -7720,13 +7695,9 @@
             "surround_condition_tdb": 30,
             "surround_condition_twb": 24,
             "surround_condition_rh": null,
-            "surround_condition_w": 167.4,
             "target_room_condition_tdb": 22,
             "target_room_condition_rh": null,
             "target_room_condition_tdp": 10,
-            "target_room_condition_w": 73.5,
-            "target_room_condition_coeff_1": 3.13,
-            "target_room_condition_coeff_2": 0.65,
             "target_room_condition_coeff_3": 0.1234,
             "target_room_condition_coeff_4": 0.2345,
             "target_room_condition_coeff_5": 0.3456,
@@ -7927,7 +7898,6 @@
             "target_room_condition_type": "tdb_c_rh",
             "fixed_intentional_opening_type": "l_m_x_w_m_x_d_m",
             "additional_moisture_type": "tdb_c_twb_c",
-            "total_load_unit_type": "total_load_unit_type",
             "room_zone_length": 14,
             "room_zone_width": 9,
             "room_zone_height": 4.5,
@@ -7938,13 +7908,9 @@
             "surround_condition_tdb": 30,
             "surround_condition_twb": null,
             "surround_condition_rh": 62,
-            "surround_condition_w": 155.2,
             "target_room_condition_tdb": 22,
             "target_room_condition_rh": 35,
             "target_room_condition_tdp": null,
-            "target_room_condition_w": 65.1,
-            "target_room_condition_coeff_1": 3.13,
-            "target_room_condition_coeff_2": 0.65,
             "target_room_condition_coeff_3": 0.1234,
             "target_room_condition_coeff_4": 0.2345,
             "target_room_condition_coeff_5": 0.3456,
