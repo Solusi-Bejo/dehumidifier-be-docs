@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.0Rc12",
+    "version": "1.0Rc11",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
@@ -7369,11 +7369,6 @@
             "format": "float",
             "nullable": true
           },
-          "outside_condition_w": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
           "surround_condition_tdb": {
             "type": "number",
             "format": "float",
@@ -7530,11 +7525,6 @@
             "format": "float",
             "nullable": true
           },
-          "fresh_air_flow_w": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
           "other_sources": {
             "type": "number",
             "format": "float",
@@ -7555,11 +7545,6 @@
             "nullable": true
           },
           "other_sources_rh": {
-            "type": "number",
-            "format": "float",
-            "nullable": true
-          },
-          "other_sources_w": {
             "type": "number",
             "format": "float",
             "nullable": true
@@ -7732,7 +7717,6 @@
             "outside_condition_tdb": 34,
             "outside_condition_twb": null,
             "outside_condition_rh": 66.7,
-            "outside_condition_w": 167.4,
             "surround_condition_tdb": 30,
             "surround_condition_twb": 24,
             "surround_condition_rh": null,
@@ -7765,13 +7749,11 @@
             "fresh_air_flow_tdb": 33,
             "fresh_air_flow_twb": null,
             "fresh_air_flow_rh": 58,
-            "fresh_air_flow_w": 145.8,
             "other_sources": 50,
             "other_sources_unit": "CMH",
             "other_sources_tdb": 29,
             "other_sources_twb": null,
-            "other_sources_rh": 61,
-            "other_sources_w": 138.6
+            "other_sources_rh": 61
           }
         }
       },
@@ -7953,7 +7935,6 @@
             "outside_condition_tdb": 34,
             "outside_condition_twb": 27,
             "outside_condition_rh": null,
-            "outside_condition_w": 160.2,
             "surround_condition_tdb": 30,
             "surround_condition_twb": null,
             "surround_condition_rh": 62,
@@ -7986,13 +7967,11 @@
             "fresh_air_flow_tdb": 12,
             "fresh_air_flow_twb": 10,
             "fresh_air_flow_rh": null,
-            "fresh_air_flow_w": 120.4,
             "other_sources": 90,
             "other_sources_unit": "CFM",
             "other_sources_tdb": 11,
             "other_sources_twb": 9,
-            "other_sources_rh": null,
-            "other_sources_w": 118.9
+            "other_sources_rh": null
           }
         }
       },
