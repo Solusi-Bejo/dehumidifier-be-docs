@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.1Rc2",
+    "version": "1.1Rc1",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
@@ -2636,7 +2636,7 @@
           "Dehumidifier Calculation"
         ],
         "summary": "Save dehumidifier calculation aggregate request",
-        "description": "Main entry endpoint for creating a calculator project and its related data. It generates the project structure, inserts default related records, persists both raw inputs and calculated result values provided by the frontend, generates `project_code` from `document_sequences`, and finalizes `selection_no` by appending a running sequence to the submitted prefix.",
+        "description": "Main entry endpoint for creating a calculator project and its related data. It generates the project structure, inserts default related records, and persists both raw inputs and calculated result values provided by the frontend.",
         "parameters": [
           {
             "in": "header",
@@ -5350,7 +5350,7 @@
                   "document_file": {
                     "type": "string",
                     "format": "binary",
-                    "description": "Required single PDF technical data document uploaded via multipart/form-data. Backend validates it as PDF and stores the generated file using the .pdf extension."
+                    "description": "Required single technical data document file uploaded via multipart/form-data. Backend stores the file and generates the document URL automatically."
                   },
                   "image_files": {
                     "type": "array",
@@ -5527,15 +5527,7 @@
                     "esp_reactivation_pa": 200,
                     "power_supply": "380/3/50",
                     "youtube_url": "https://www.youtube.com/watch?v=abc123",
-                    "technical_data_pdf_url": "https://dehumidifier-api.ldpgroup.co.id/storages/product-models/documents/tech-data.pdf",
-                    "images": [
-                      {
-                        "id": 1,
-                        "image_url": "https://dehumidifier-api.ldpgroup.co.id/storages/product-models/images/product-front.png",
-                        "sort_order": 1,
-                        "is_primary": true
-                      }
-                    ],
+                    "technical_data_pdf_url": "/storages/uploads/product-models/documents/tech-data.pdf",
                     "authors": [
                       {
                         "user_id": 1,
@@ -5699,7 +5691,7 @@
                   "document_file": {
                     "type": "string",
                     "format": "binary",
-                    "description": "Optional replacement PDF technical data document uploaded via multipart/form-data. Backend validates it as PDF and stores the generated file using the .pdf extension."
+                    "description": "Single technical data document file uploaded via multipart/form-data. Backend stores the file and generates the document URL automatically."
                   },
                   "image_files": {
                     "type": "array",
@@ -7680,8 +7672,7 @@
           },
           "reference_no": {
             "type": "string",
-            "nullable": true,
-            "description": "Frontend sends prefix only, for example `CAL/STE/DR/2026`. Backend appends the running sequence from `document_sequences` and stores the final `selection_no`."
+            "nullable": true
           },
           "tax_percent": {
             "type": "number",
@@ -8326,7 +8317,7 @@
             "pic_name": "Budi",
             "company_name": "PT Eka Hospital",
             "address": "Jakarta",
-            "reference_no": "CAL/STE/DR/2026",
+            "reference_no": "REF-001",
             "tax_percent": 11,
             "creator_name": "Haris",
             "creator_position": "Sales Engineer"
@@ -9748,12 +9739,8 @@
       "ProductModelImage": {
         "type": "object",
         "properties": {
-          "id": {
-            "type": "integer"
-          },
           "image_url": {
-            "type": "string",
-            "format": "uri"
+            "type": "string"
           },
           "sort_order": {
             "type": "integer"
@@ -10147,15 +10134,7 @@
           },
           "technical_data_pdf_url": {
             "type": "string",
-            "format": "uri",
-            "nullable": true,
-            "description": "Absolute URL assembled using app.base_url."
-          },
-          "images": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProductModelImage"
-            }
+            "nullable": true
           },
           "authors": {
             "type": "array",
