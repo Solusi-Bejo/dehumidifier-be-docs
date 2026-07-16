@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.2Rc2",
+    "version": "1.1Rc2",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
@@ -179,17 +179,6 @@
         ],
         "summary": "Refresh access token",
         "security": [],
-        "parameters": [
-          {
-            "in": "header",
-            "name": "token-ttl",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Testing only. Access token expiry in seconds. Refresh token expiry will be access token ttl x 2."
-          }
-        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -5365,7 +5354,7 @@
                   },
                   "image_files": {
                     "type": "array",
-                    "description": "Required multiple product image files uploaded via multipart/form-data. Backend derives each stored file extension from its validated image MIME type.",
+                    "description": "Required multiple product image files uploaded via multipart/form-data. Send one or more binary files using the same field name image_files.",
                     "items": {
                       "type": "string",
                       "format": "binary"
@@ -5714,7 +5703,7 @@
                   },
                   "image_files": {
                     "type": "array",
-                    "description": "Optional replacement product image files uploaded via multipart/form-data. Backend derives each stored file extension from its validated image MIME type.",
+                    "description": "Multiple product image files uploaded via multipart/form-data. Send one or more binary files using the same field name image_files.",
                     "items": {
                       "type": "string",
                       "format": "binary"
