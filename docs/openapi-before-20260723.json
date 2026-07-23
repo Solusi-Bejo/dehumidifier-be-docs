@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.3RC1",
+    "version": "1.2Rc2",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
@@ -5101,14 +5101,6 @@
                             "price_option": "platinum",
                             "unit_price": 500000000
                           }
-                        ],
-                        "images": [
-                          {
-                            "id": 1,
-                            "image_url": "https://dehumidifier-api.ldpgroup.co.id/storages/product-models/images/product-front.png",
-                            "sort_order": 1,
-                            "is_primary": true
-                          }
                         ]
                       }
                     ]
@@ -5367,12 +5359,9 @@
                     "description": "Price option value that will be stored as price_option = platinum."
                   },
                   "document_file": {
-                    "type": "array",
-                    "description": "Required PDF technical data documents uploaded via multipart/form-data using repeated document_file keys. Backend validates every file as PDF and stores generated files using the .pdf extension.",
-                    "items": {
-                      "type": "string",
-                      "format": "binary"
-                    }
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Required single PDF technical data document uploaded via multipart/form-data. Backend validates it as PDF and stores the generated file using the .pdf extension."
                   },
                   "image_files": {
                     "type": "array",
@@ -5550,20 +5539,6 @@
                     "power_supply": "380/3/50",
                     "youtube_url": "https://www.youtube.com/watch?v=abc123",
                     "technical_data_pdf_url": "https://dehumidifier-api.ldpgroup.co.id/storages/product-models/documents/tech-data.pdf",
-                    "documents": [
-                      {
-                        "id": 1,
-                        "document_url": "https://dehumidifier-api.ldpgroup.co.id/storages/product-models/documents/tech-data.pdf",
-                        "sort_order": 1,
-                        "is_primary": true
-                      },
-                      {
-                        "id": 2,
-                        "document_url": "https://dehumidifier-api.ldpgroup.co.id/storages/product-models/documents/tech-data-extra.pdf",
-                        "sort_order": 2,
-                        "is_primary": false
-                      }
-                    ],
                     "images": [
                       {
                         "id": 1,
@@ -5733,12 +5708,9 @@
                     "description": "Price option value that will be stored as price_option = platinum."
                   },
                   "document_file": {
-                    "type": "array",
-                    "description": "Optional replacement PDF technical data documents uploaded via multipart/form-data using repeated document_file keys. When sent, backend replaces the stored document list for this product model.",
-                    "items": {
-                      "type": "string",
-                      "format": "binary"
-                    }
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Optional replacement PDF technical data document uploaded via multipart/form-data. Backend validates it as PDF and stores the generated file using the .pdf extension."
                   },
                   "image_files": {
                     "type": "array",
@@ -9802,24 +9774,6 @@
           }
         }
       },
-      "ProductModelDocument": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
-          },
-          "document_url": {
-            "type": "string",
-            "format": "uri"
-          },
-          "sort_order": {
-            "type": "integer"
-          },
-          "is_primary": {
-            "type": "boolean"
-          }
-        }
-      },
       "ProductModelAuthor": {
         "type": "object",
         "properties": {
@@ -9969,12 +9923,6 @@
               "technical_data_pdf_url": {
                 "type": "string",
                 "nullable": true
-              },
-              "documents": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/ProductModelDocument"
-                }
               },
               "description": {
                 "type": "string",
@@ -10137,12 +10085,6 @@
             "items": {
               "$ref": "#/components/schemas/ProductModelPriceOption"
             }
-          },
-          "images": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProductModelImage"
-            }
           }
         }
       },
@@ -10219,12 +10161,6 @@
             "format": "uri",
             "nullable": true,
             "description": "Absolute URL assembled using app.base_url."
-          },
-          "documents": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProductModelDocument"
-            }
           },
           "images": {
             "type": "array",
