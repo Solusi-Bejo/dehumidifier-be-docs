@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.5RC1",
+    "version": "1.4RC1",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
@@ -7796,17 +7796,26 @@
             "type": "string",
             "nullable": true
           },
+          "selected_model_id": {
+            "type": "integer",
+            "nullable": true
+          },
+          "selected_model_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "select_model_series_name": {
+            "type": "string",
+            "nullable": true
+          },
           "system_efficiency_modifier": {
             "type": "number",
             "format": "float",
             "nullable": true
           },
-          "selected_models": {
-            "type": "array",
-            "description": "Multiple selected product models for this calculation.",
-            "items": {
-              "$ref": "#/components/schemas/CalculationSelectedModel"
-            }
+          "qty": {
+            "type": "integer",
+            "nullable": true
           },
           "permeation_load": {
             "type": "number",
@@ -7871,24 +7880,6 @@
             "type": "number",
             "format": "float",
             "nullable": true
-          }
-        }
-      },
-      "CalculationSelectedModel": {
-        "type": "object",
-        "required": [
-          "selected_model_id",
-          "qty"
-        ],
-        "properties": {
-          "selected_model_id": {
-            "type": "integer",
-            "example": 5
-          },
-          "qty": {
-            "type": "integer",
-            "minimum": 1,
-            "example": 2
           }
         }
       },
@@ -8274,9 +8265,6 @@
           },
           "calculation": {
             "type": "object",
-            "required": [
-              "selected_models"
-            ],
             "properties": {
               "title": {
                 "type": "string"
@@ -8287,17 +8275,16 @@
               "flow_air_system_id": {
                 "type": "integer"
               },
-              "selected_models": {
-                "type": "array",
-                "description": "Multiple selected product models. This is the active source of truth for model and quantity.",
-                "minItems": 1,
-                "items": {
-                  "$ref": "#/components/schemas/CalculationSelectedModel"
-                }
+              "selected_model_id": {
+                "type": "integer"
               },
               "system_efficiency_modifier": {
                 "type": "number",
                 "format": "float"
+              },
+              "qty": {
+                "type": "integer",
+                "nullable": true
               },
               "permeation_load": {
                 "type": "number",
@@ -8387,17 +8374,9 @@
             "title": "Main Calculation",
             "room_name": "Dry Room 1",
             "flow_air_system_id": 1,
+            "selected_model_id": 5,
             "system_efficiency_modifier": 0.95,
-            "selected_models": [
-              {
-                "selected_model_id": 5,
-                "qty": 2
-              },
-              {
-                "selected_model_id": 6,
-                "qty": 1
-              }
-            ],
+            "qty": 2,
             "permeation_load": 1000,
             "door_opening_load": 950,
             "fixed_opening_load": 800,
@@ -8500,9 +8479,6 @@
           },
           "calculation": {
             "type": "object",
-            "required": [
-              "selected_models"
-            ],
             "properties": {
               "title": {
                 "type": "string"
@@ -8513,17 +8489,16 @@
               "flow_air_system_id": {
                 "type": "integer"
               },
-              "selected_models": {
-                "type": "array",
-                "description": "Multiple selected product models. This is the active source of truth for model and quantity.",
-                "minItems": 1,
-                "items": {
-                  "$ref": "#/components/schemas/CalculationSelectedModel"
-                }
+              "selected_model_id": {
+                "type": "integer"
               },
               "system_efficiency_modifier": {
                 "type": "number",
                 "format": "float",
+                "nullable": true
+              },
+              "qty": {
+                "type": "integer",
                 "nullable": true
               },
               "permeation_load": {
@@ -8619,17 +8594,9 @@
             "title": "Main Calculation Rev 1",
             "room_name": "Dry Room 1",
             "flow_air_system_id": 1,
+            "selected_model_id": 5,
             "system_efficiency_modifier": 0.95,
-            "selected_models": [
-              {
-                "selected_model_id": 5,
-                "qty": 2
-              },
-              {
-                "selected_model_id": 6,
-                "qty": 1
-              }
-            ],
+            "qty": 2,
             "permeation_load": 1000,
             "door_opening_load": 950,
             "fixed_opening_load": 800,
@@ -8793,11 +8760,8 @@
           "calculation": {
             "$ref": "#/components/schemas/CalculationSheetCalculation"
           },
-          "selected_models": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CalculationSheetSelectedModelItem"
-            }
+          "selected_model": {
+            "$ref": "#/components/schemas/CalculationSheetSelectedModel"
           },
           "inputs": {
             "$ref": "#/components/schemas/CalculationInputs"
@@ -8831,28 +8795,13 @@
       "CalculationSheetProjectInformation": {
         "type": "object",
         "properties": {
-          "pic_name": {
-            "type": "string"
-          },
-          "company_name": {
-            "type": "string"
-          },
-          "address": {
-            "type": "string"
-          },
           "reference_no": {
             "type": "string"
-          },
-          "tax_percent": {
-            "type": "number"
           },
           "creator_name": {
             "type": "string"
           },
           "creator_position": {
-            "type": "string"
-          },
-          "quotation_date": {
             "type": "string"
           }
         }
@@ -8876,16 +8825,18 @@
           "flow_air_system_name": {
             "type": "string"
           },
+          "selected_model_id": {
+            "type": "integer",
+            "nullable": true
+          },
           "system_efficiency_modifier": {
             "type": "number",
             "format": "float",
             "nullable": true
           },
-          "selected_models": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/CalculationSelectedModel"
-            }
+          "qty": {
+            "type": "integer",
+            "nullable": true
           },
           "permeation_load": {
             "type": "number",
@@ -8953,7 +8904,7 @@
           }
         }
       },
-      "CalculationSheetSelectedModelItem": {
+      "CalculationSheetSelectedModel": {
         "type": "object",
         "properties": {
           "id": {
@@ -8979,9 +8930,6 @@
             "type": "number",
             "format": "float",
             "nullable": true
-          },
-          "qty": {
-            "type": "integer"
           }
         }
       },
@@ -9220,11 +9168,17 @@
           "quotation": {
             "$ref": "#/components/schemas/QuotationSetting"
           },
-          "selected_models": {
+          "selected_model": {
+            "$ref": "#/components/schemas/QuotationSheetSelectedModel"
+          },
+          "available_price_options": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/QuotationSheetSelectedModelItem"
+              "$ref": "#/components/schemas/ProductModelPriceOption"
             }
+          },
+          "pricing_context": {
+            "$ref": "#/components/schemas/QuotationSheetPricingContext"
           }
         }
       },
@@ -9281,7 +9235,7 @@
           }
         }
       },
-      "QuotationSheetSelectedModelItem": {
+      "QuotationSheetSelectedModel": {
         "type": "object",
         "properties": {
           "id": {
@@ -9317,15 +9271,25 @@
             "type": "number",
             "format": "float",
             "nullable": true
-          },
+          }
+        }
+      },
+      "QuotationSheetPricingContext": {
+        "type": "object",
+        "properties": {
           "qty": {
-            "type": "integer"
+            "type": "integer",
+            "nullable": true
           },
-          "price_options": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProductModelPriceOption"
-            }
+          "vat_percent": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "selected_unit_price": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
           }
         }
       },
