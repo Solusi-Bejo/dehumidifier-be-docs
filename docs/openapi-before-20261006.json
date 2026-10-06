@@ -2,17 +2,13 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.1.0 RC1",
+    "version": "1.5RC1",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
     {
       "url": "https://dehumidifier-api.ldpgroup.co.id",
-      "description": "Production Environment"
-    },
-    {
-      "url": "https://dehumidifier-api-preview.ldpgroup.co.id",
-      "description": "Dehumidifier New Features"
+      "description": "Devel Environment"
     }
   ],
   "tags": [
@@ -57,12 +53,6 @@
     },
     {
       "name": "Account"
-    },
-    {
-      "name": "Flow System Tables"
-    },
-    {
-      "name": "Flow System Fields"
     }
   ],
   "security": [
@@ -2657,8 +2647,19 @@
           "Dehumidifier Calculation"
         ],
         "summary": "Save dehumidifier calculation aggregate request",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Existing protected Calculator access; no admin-only or Project owner/creator scope is added to these handlers. Creates the existing Project/Calculation aggregate. calculation.flow_system_id omitted/null stores SQL NULL; supplied Type must exist and match the incoming Group. Existing selected_models and project payload remain required. reference_no supplies the selection number prefix.",
-        "parameters": [],
+        "description": "Main entry endpoint for creating a calculator project and its related data. It generates the project structure, inserts default related records, persists both raw inputs and calculated result values provided by the frontend, generates `project_code` from `document_sequences`, and finalizes `selection_no` by appending a running sequence to the submitted prefix.",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          }
+        ],        
         "requestBody": {
           "required": true,
           "content": {
@@ -2695,18 +2696,14 @@
           "409": {
             "$ref": "#/components/responses/ConflictError"
           },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
+            "$ref": "#/components/responses/InternalServerError"
           },
           "400": {
-            "description": "invalid_request_body for malformed JSON/type; validation_error for required fields or nonpositive Type ID; invalid_flow_system for supplied Type with absent/null/mismatching Group; invalid_selected_models for invalid product-model selection.",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2716,7 +2713,17 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -2726,7 +2733,7 @@
             }
           },
           "404": {
-            "description": "calculation_not_found or user_not_found from the existing mapper; Save/Update additionally flow_system_not_found for missing supplied Type (field calculation.flow_system_id).",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2746,15 +2753,17 @@
         "summary": "Get calculation detail",
         "parameters": [
           {
-            "in": "path",
-            "name": "id",
-            "required": true,
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
             "schema": {
               "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
+              "example": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdPath"
           }
         ],
         "responses": {
@@ -2781,7 +2790,7 @@
             }
           },
           "400": {
-            "description": "invalid_path_param for malformed/nonpositive/out-of-int64-range id.",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2791,7 +2800,17 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -2801,7 +2820,7 @@
             }
           },
           "404": {
-            "description": "calculation_not_found or user_not_found from the existing Calculator error mapper.",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2821,7 +2840,7 @@
             }
           },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2830,26 +2849,27 @@
               }
             }
           }
-        },
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Existing protected Calculator access; no admin-only or Project owner/creator scope is added to these handlers. Type ID/name are always present and nullable under data.calculation. No nested Flow Tables/Fields; use Project Preview for composition."
+        }
       },
       "put": {
         "tags": [
           "Dehumidifier Calculation"
         ],
         "summary": "Update dehumidifier calculation",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Existing protected Calculator access; no admin-only or Project owner/creator scope is added to these handlers. Full aggregate update. flow_system_id omitted/null preserves selection; supplied Type validates and replaces it. No clear-selection operation. Coordinate Group and Type changes to avoid mismatch. Send existing priority, creator metadata and status when preserving them; these fields are not mandatory runtime validations. Dates are preserved; owner is the authenticated user. Detail does not expose status.",
+        "description": "Full update for an existing dehumidifier calculation aggregate. The frontend must provide `project.priority`, `project_information.creator_name`, `project_information.creator_position`, and `calculation.status` in the detail payload. The backend sets `project.owner_user_id` based on the authenticated user and preserves the existing values of `project.calculation_date` and `project_information.quotation_date`.",
         "parameters": [
           {
-            "in": "path",
-            "name": "id",
-            "required": true,
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
             "schema": {
               "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
+              "example": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdPath"
           }
         ],
         "requestBody": {
@@ -2886,7 +2906,7 @@
             }
           },
           "400": {
-            "description": "invalid_path_param for invalid path IDs; invalid_request_body for malformed JSON/type; validation_error for nonpositive Type ID; invalid_flow_system for supplied Type with absent/null/mismatching incoming Group; invalid_selected_models for invalid model selection (Save/Update).",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2896,7 +2916,17 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -2906,7 +2936,7 @@
             }
           },
           "404": {
-            "description": "calculation_not_found or user_not_found from the existing mapper; Save/Update additionally flow_system_not_found for missing supplied Type (field calculation.flow_system_id).",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -2926,7 +2956,7 @@
             }
           },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3388,7 +3418,7 @@
             "schema": {
               "type": "integer",
               "example": 1
-            }
+            }           
           },
           {
             "in": "query",
@@ -3610,12 +3640,7 @@
                   },
                   "discount": {
                     "type": "number",
-                    "format": "float",
-                    "description": "Legacy single percentage. Ignored when discounts is sent."
-                  },
-                  "discounts": {
-                    "type": "string",
-                    "description": "JSON array, at most 5 items, applied in order: [{\"name\":\"\",\"type\":\"percentage\",\"value\":10}]. value 0-100, name max 50 chars."
+                    "format": "float"
                   },
                   "terms_and_conditions": {
                     "type": "string"
@@ -3729,7 +3754,7 @@
         "tags": [
           "Flow Air Systems"
         ],
-        "summary": "List flow-air-systems",
+        "summary": "List flow air systems",
         "responses": {
           "200": {
             "description": "Success",
@@ -3742,7 +3767,7 @@
             }
           },
           "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3752,7 +3777,37 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -3762,7 +3817,7 @@
             }
           },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3774,75 +3829,95 @@
         },
         "parameters": [
           {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
             "in": "query",
             "name": "page",
+            "description": "This is for pagination, please input page number to get the corresponding data (Default: 1).",
+            "required": false,
             "schema": {
               "type": "integer",
               "default": 1
-            },
-            "description": "Invalid/nonpositive values fall back to 1."
+            }
           },
           {
             "in": "query",
             "name": "limit",
+            "description": "This is for Limit and offset pagination, please input number of data to be shown in one page (Default: 10).",
+            "required": false,
             "schema": {
               "type": "integer",
               "default": 10
-            },
-            "description": "Invalid/nonpositive values fall back to 10."
+            }
           },
           {
             "in": "query",
             "name": "search",
+            "description": "Available fields to search by: `id`, `name`, `is_active`. Please input keyword to search in those fields (Optional).",
+            "required": false,
             "schema": {
               "type": "string"
-            },
-            "description": "Search name."
+            }
           },
           {
             "in": "query",
             "name": "sort_by",
+            "description": "Available fields to sort by: `id`, `name`, `sort_order`, `created_at`, `updated_at`. Please input keyword to search in those fields (Optional).. Please input keyword to search in those fields (Optional).",
+            "required": false,
             "schema": {
               "type": "string"
-            },
-            "description": "Supported: id (fallback), name, created_at, updated_at, sort_order. Unknown values fall back to id."
+            }
           },
           {
             "in": "query",
             "name": "sort_order",
+            "description": "Sort order for the results. Please input either 'asc' or 'desc'. (Optional)",
+            "required": false,
             "schema": {
               "type": "string",
-              "default": "asc"
-            },
-            "description": "desc (case-insensitive) selects descending; other values use ascending."
-          },
-          {
-            "in": "query",
-            "name": "is_active",
-            "schema": {
-              "type": "boolean"
-            },
-            "description": "Omitted/empty includes both statuses. Go ParseBool forms accepted (true/false, 1/0, t/f, T/F, TRUE/FALSE, True/False); malformed nonempty values return 400 invalid_boolean."
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
           }
-        ],
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Authenticated read, including inactive historical records."
+        ]
       },
       "post": {
         "tags": [
           "Flow Air Systems"
         ],
-        "summary": "Create flow-air-systems",
+        "summary": "Create flow air system",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/FlowAirSystemCreateRequest"
+                "$ref": "#/components/schemas/FlowAirSystemRequest"
               }
             }
           }
         },
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": "Created",
@@ -3855,11 +3930,6 @@
                     },
                     {
                       "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
                       "properties": {
                         "data": {
                           "$ref": "#/components/schemas/ActionMessage"
@@ -3867,12 +3937,19 @@
                       }
                     }
                   ]
+                },
+                "example": {
+                  "status_code": 200,
+                  "api_version": "1.0.0",
+                  "data": {
+                    "message": "Flow air system successfully created"
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3882,7 +3959,7 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
@@ -3892,7 +3969,17 @@
             }
           },
           "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -3902,7 +3989,7 @@
             }
           },
           "409": {
-            "description": "duplicate_entry (including duplicate stable code on create).",
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -3912,7 +3999,7 @@
             }
           },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3921,8 +4008,7 @@
               }
             }
           }
-        },
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). Creates active master; code is required and unique. Returns an action message, not a resource ID."
+        }
       }
     },
     "/api/v1/flow-air-systems/{id}": {
@@ -3930,18 +4016,20 @@
         "tags": [
           "Flow Air Systems"
         ],
-        "summary": "Get detail for flow-air-systems",
+        "summary": "Get flow air system detail",
         "parameters": [
           {
-            "in": "path",
-            "name": "id",
-            "required": true,
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
             "schema": {
               "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
+              "example": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdPath"
           }
         ],
         "responses": {
@@ -3956,11 +4044,6 @@
                     },
                     {
                       "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
                       "properties": {
                         "data": {
                           "$ref": "#/components/schemas/FlowAirSystem"
@@ -3973,7 +4056,7 @@
             }
           },
           "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3983,7 +4066,17 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -3993,7 +4086,17 @@
             }
           },
           "404": {
-            "description": "Missing master: flow_air_system_not_found.",
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -4003,7 +4106,7 @@
             }
           },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4012,25 +4115,26 @@
               }
             }
           }
-        },
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Authenticated read, including inactive historical records."
+        }
       },
       "put": {
         "tags": [
           "Flow Air Systems"
         ],
-        "summary": "Update flow-air-systems",
+        "summary": "Update flow air system",
         "parameters": [
           {
-            "in": "path",
-            "name": "id",
-            "required": true,
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
             "schema": {
               "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
+              "example": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdPath"
           }
         ],
         "requestBody": {
@@ -4055,11 +4159,6 @@
                     },
                     {
                       "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
                       "properties": {
                         "data": {
                           "$ref": "#/components/schemas/ActionMessage"
@@ -4067,12 +4166,19 @@
                       }
                     }
                   ]
+                },
+                "example": {
+                  "status_code": 200,
+                  "api_version": "1.0.0",
+                  "data": {
+                    "message": "Flow air system successfully updated"
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4082,7 +4188,7 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
@@ -4092,7 +4198,7 @@
             }
           },
           "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -4102,7 +4208,7 @@
             }
           },
           "404": {
-            "description": "Missing master: flow_air_system_not_found.",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4112,7 +4218,7 @@
             }
           },
           "409": {
-            "description": "duplicate_entry (including duplicate stable code on create).",
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -4122,7 +4228,7 @@
             }
           },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4131,8 +4237,7 @@
               }
             }
           }
-        },
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise)."
+        }
       }
     },
     "/api/v1/flow-systems": {
@@ -4140,7 +4245,7 @@
         "tags": [
           "Flow Systems"
         ],
-        "summary": "List flow-systems",
+        "summary": "List flow systems",
         "responses": {
           "200": {
             "description": "Success",
@@ -4153,7 +4258,7 @@
             }
           },
           "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4163,7 +4268,37 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -4173,7 +4308,7 @@
             }
           },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4185,75 +4320,144 @@
         },
         "parameters": [
           {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
             "in": "query",
             "name": "page",
+            "description": "This is for pagination, please input page number to get the corresponding data (Default: 1).",
+            "required": false,
             "schema": {
               "type": "integer",
               "default": 1
-            },
-            "description": "Invalid/nonpositive values fall back to 1."
+            }
           },
           {
             "in": "query",
             "name": "limit",
+            "description": "This is for Limit and offset pagination, please input number of data to be shown in one page (Default: 10).",
+            "required": false,
             "schema": {
               "type": "integer",
               "default": 10
-            },
-            "description": "Invalid/nonpositive values fall back to 10."
+            }
           },
           {
             "in": "query",
             "name": "search",
+            "description": "Available fields to search by: `name`, `description`. Please input keyword to search in those fields (Optional).",
+            "required": false,
             "schema": {
               "type": "string"
-            },
-            "description": "Search name and description."
+            }
           },
           {
             "in": "query",
             "name": "sort_by",
+            "description": "Available fields to sort by: `name`, `sort_order`, `created_at`, `updated_at`. Please input field to sort by (Optional).",
+            "required": false,
             "schema": {
               "type": "string"
-            },
-            "description": "Supported: id (fallback), name, created_at, updated_at, sort_order. Unknown values fall back to id."
+            }
           },
           {
             "in": "query",
             "name": "sort_order",
+            "description": "Available fields to sort order: `asc`, `desc`. Please choose one to sort order (Optional).",
+            "required": false,
             "schema": {
               "type": "string",
-              "default": "asc"
-            },
-            "description": "desc (case-insensitive) selects descending; other values use ascending."
-          },
-          {
-            "in": "query",
-            "name": "is_active",
-            "schema": {
-              "type": "boolean"
-            },
-            "description": "Omitted/empty includes both statuses. Go ParseBool forms accepted (true/false, 1/0, t/f, T/F, TRUE/FALSE, True/False); malformed nonempty values return 400 invalid_boolean."
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
           },
           {
             "in": "query",
             "name": "flow_air_system_id",
+            "description": "ID of flow air system (Optional).",
+            "required": false,
             "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "dehumidifier_capacity_min",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "float"
             },
-            "description": "Filter by Group. Invalid/nonpositive/out-of-int64-range values are ignored by the existing handler."
+            "description": "Minimum dehumidifier capacity, put it with numeric value to filter flow systems that has dehumidifier capacity."
+          },
+          {
+            "in": "query",
+            "name": "dehumidifier_capacity_max",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Maximum dehumidifier capacity. Put it with numeric value to filter flow systems that has dehumidifier capacity."
+          },
+          {
+            "in": "query",
+            "name": "pre_cooling_capacity_min",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Minimum pre cooling capacity. Put it with numeric value to filter flow systems that has pre cooling capacity."
+          },
+          {
+            "in": "query",
+            "name": "pre_cooling_capacity_max",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Maximum pre cooling capacity. Put it with numeric value to filter flow systems that has pre cooling capacity."
+          },
+          {
+            "in": "query",
+            "name": "post_cooling_capacity_min",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Minimum post cooling capacity. Put it with numeric value to filter flow systems that has post cooling capacity."
+          },
+          {
+            "in": "query",
+            "name": "post_cooling_capacity_max",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "float"
+            },
+            "description": "Maximum post cooling capacity. Put it with numeric value to filter flow systems that has post cooling capacity."
           }
         ],
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Authenticated read, including inactive historical records. No capacity projection/filtering; legacy capacity query keys are ignored."
+        "description": "Supports range-based filtering using min/max values for dehumidifier, pre cooling, and post cooling capacities."
       },
       "post": {
         "tags": [
           "Flow Systems"
         ],
-        "summary": "Create flow-systems",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). Creates active master; code is required and unique. Returns an action message, not a resource ID. Multipart metadata/image only; relationship management is separate. Invalid Group FK is a sanitized 500, not a dedicated Group-not-found validation response.",
+        "summary": "Create flow system",
+        "description": "Create flow system aggregate using multipart/form-data. Scalar fields are sent as form fields, `image_file` is the main cover image, `options` is sent as a JSON string array, and optional per-option diagram files can be sent using keys like `option_diagram_0`, `option_diagram_1`, and so on.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4264,10 +4468,21 @@
             }
           }
         },
-        "parameters": [],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          }
+        ],
         "responses": {
-          "200": {
-            "description": "Success",
+          "201": {
+            "description": "Created",
             "content": {
               "application/json": {
                 "schema": {
@@ -4277,11 +4492,6 @@
                     },
                     {
                       "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
                       "properties": {
                         "data": {
                           "$ref": "#/components/schemas/ActionMessage"
@@ -4289,12 +4499,19 @@
                       }
                     }
                   ]
+                },
+                "example": {
+                  "status_code": 200,
+                  "api_version": "1.0.0",
+                  "data": {
+                    "message": "Flow system successfully created"
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Wrong content type returns message \"content type must be multipart/form-data\" with no error code from route middleware. Handler binding/validation: invalid_request_body, validation_error; missing create image_file: required; unsupported image: invalid_file_type; invalid update path: invalid_path_param.",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4304,7 +4521,7 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
@@ -4314,7 +4531,17 @@
             }
           },
           "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4324,7 +4551,7 @@
             }
           },
           "409": {
-            "description": "duplicate_entry (including duplicate stable code on create).",
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -4334,7 +4561,7 @@
             }
           },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4351,18 +4578,20 @@
         "tags": [
           "Flow Systems"
         ],
-        "summary": "Get detail for flow-systems",
+        "summary": "Get flow system detail",
         "parameters": [
           {
-            "in": "path",
-            "name": "id",
-            "required": true,
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
             "schema": {
               "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
+              "example": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdPath"
           }
         ],
         "responses": {
@@ -4377,11 +4606,6 @@
                     },
                     {
                       "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
                       "properties": {
                         "data": {
                           "$ref": "#/components/schemas/FlowSystemDetail"
@@ -4394,7 +4618,7 @@
             }
           },
           "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4404,7 +4628,17 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -4414,7 +4648,17 @@
             }
           },
           "404": {
-            "description": "Missing master: flow_system_not_found.",
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -4424,7 +4668,7 @@
             }
           },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4433,26 +4677,27 @@
               }
             }
           }
-        },
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Authenticated read, including inactive historical records."
+        }
       },
       "put": {
         "tags": [
           "Flow Systems"
         ],
-        "summary": "Update flow-systems",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). Multipart metadata/image only; relationship management is separate. Invalid Group FK is a sanitized 500, not a dedicated Group-not-found validation response.",
+        "summary": "Update flow system",
+        "description": "Update flow system aggregate using multipart/form-data. Scalar fields are sent as form fields, `image_file` is the main cover image. If `image_file` is not sent, the existing image is retained. `options` is sent as a JSON string array, and optional per-option diagram files can be sent using keys like `option_diagram_0`, `option_diagram_1`, and so on. Existing options are replaced in full.",
         "parameters": [
           {
-            "in": "path",
-            "name": "id",
-            "required": true,
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
             "schema": {
               "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
+              "example": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdPath"
           }
         ],
         "requestBody": {
@@ -4477,11 +4722,6 @@
                     },
                     {
                       "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
                       "properties": {
                         "data": {
                           "$ref": "#/components/schemas/ActionMessage"
@@ -4489,12 +4729,19 @@
                       }
                     }
                   ]
+                },
+                "example": {
+                  "status_code": 200,
+                  "api_version": "1.0.0",
+                  "data": {
+                    "message": "Flow system successfully updated"
+                  }
                 }
               }
             }
           },
           "400": {
-            "description": "Wrong content type returns message \"content type must be multipart/form-data\" with no error code from route middleware. Handler binding/validation: invalid_request_body, validation_error; missing create image_file: required; unsupported image: invalid_file_type; invalid update path: invalid_path_param.",
+            "description": "Validation error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4504,7 +4751,7 @@
             }
           },
           "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
+            "description": "Unauthorized",
             "content": {
               "application/json": {
                 "schema": {
@@ -4514,7 +4761,7 @@
             }
           },
           "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
+            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -4524,7 +4771,7 @@
             }
           },
           "404": {
-            "description": "Missing master: flow_system_not_found.",
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -4534,7 +4781,7 @@
             }
           },
           "409": {
-            "description": "duplicate_entry (including duplicate stable code on create).",
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -4544,7 +4791,7 @@
             }
           },
           "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
+            "description": "Internal server error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4554,6 +4801,262 @@
             }
           }
         }
+      }
+    },
+    "/api/v1/flow-systems/{id}/options": {
+      "get": {
+        "tags": [
+          "Flow Systems"
+        ],
+        "summary": "Get flow system options",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseSuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/FlowSystemOption"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Flow Systems"
+        ],
+        "summary": "Replace flow system options",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Debug-User-Id",
+            "required": false,
+            "description": "During development Authorization will be bypassed, send user ID using this header. Sample: `X-Debug-User-Id: 1`.",
+            "schema": {
+              "type": "integer",
+              "example": 1
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IdPath"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FlowSystemOptionRequest"
+                }
+              },
+              "example": [
+                {
+                  "option_name": "Option 1",
+                  "model_name": "SSD3000",
+                  "series_name": "D23CF1",
+                  "dehumidifier_capacity": 3000,
+                  "dehumidifier_capacity_unit": "kg/h",
+                  "dehumidifier_qty": 2,
+                  "sort_order": 1
+                },
+                {
+                  "option_name": "Option 2",
+                  "model_name": "SSD4500",
+                  "series_name": "D23CF2",
+                  "dehumidifier_capacity": 4500,
+                  "dehumidifier_capacity_unit": "kg/h",
+                  "dehumidifier_qty": 1,
+                  "sort_order": 2
+                }
+              ]
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/BaseSuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/ActionMessage"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "status_code": 200,
+                  "api_version": "1.0.0",
+                  "data": {
+                    "message": "Flow system options successfully updated"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaseErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Replace all option records for the specified flow system."
       }
     },
     "/api/v1/product-models": {
@@ -4690,7 +5193,7 @@
           {
             "in": "query",
             "name": "page",
-            "description": "This is for pagination, please input page number to get the corresponding data (Default: 1).",
+           "description": "This is for pagination, please input page number to get the corresponding data (Default: 1).",
             "required": false,
             "schema": {
               "type": "integer",
@@ -4710,7 +5213,7 @@
           {
             "in": "query",
             "name": "search",
-            "description": "Available fields to search by: `model_code`, `series_name`. Please input keyword to search in those fields (Optional).",
+              "description": "Available fields to search by: `model_code`, `series_name`. Please input keyword to search in those fields (Optional).",
             "required": false,
             "schema": {
               "type": "string"
@@ -4745,6 +5248,7 @@
           {
             "in": "query",
             "name": "sort_order",
+
             "required": false,
             "schema": {
               "type": "string",
@@ -5142,7 +5646,7 @@
         ],
         "summary": "Update product model",
         "parameters": [
-          {
+          {            
             "in": "header",
             "name": "X-Debug-User-Id",
             "required": false,
@@ -6306,1601 +6810,6 @@
           }
         }
       }
-    },
-    "/api/v1/flow-air-systems/{id}/status": {
-      "patch": {
-        "tags": [
-          "Flow Air Systems"
-        ],
-        "summary": "Update status for flow-air-systems",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). No hard DELETE; deactivation preserves relationships. Legacy status write does not check affected rows; positive nonexistent ID can return 200.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlowMasterStatusRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/flow-systems/{id}/status": {
-      "patch": {
-        "tags": [
-          "Flow Systems"
-        ],
-        "summary": "Update status for flow-systems",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). No hard DELETE; deactivation preserves relationships. Legacy status write does not check affected rows; positive nonexistent ID can return 200.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlowMasterStatusRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/flow-system-tables": {
-      "get": {
-        "tags": [
-          "Flow System Tables"
-        ],
-        "summary": "List flow-system-tables",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Authenticated read, including inactive historical records.",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": "integer",
-              "default": 1
-            },
-            "description": "Invalid/nonpositive values fall back to 1."
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "schema": {
-              "type": "integer",
-              "default": 10
-            },
-            "description": "Invalid/nonpositive values fall back to 10."
-          },
-          {
-            "in": "query",
-            "name": "search",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Search name."
-          },
-          {
-            "in": "query",
-            "name": "sort_by",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Supported: id (fallback), name, created_at, updated_at. Unknown values fall back to id."
-          },
-          {
-            "in": "query",
-            "name": "sort_order",
-            "schema": {
-              "type": "string",
-              "default": "asc"
-            },
-            "description": "desc (case-insensitive) selects descending; other values use ascending."
-          },
-          {
-            "in": "query",
-            "name": "is_active",
-            "schema": {
-              "type": "boolean"
-            },
-            "description": "Omitted/empty includes both statuses. Go ParseBool forms accepted (true/false, 1/0, t/f, T/F, TRUE/FALSE, True/False); malformed nonempty values return 400 invalid_boolean."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlowSystemTableListResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Flow System Tables"
-        ],
-        "summary": "Create flow-system-tables",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). Creates active master; code is required and unique. Returns an action message, not a resource ID.",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "duplicate_entry (including duplicate stable code on create).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlowSystemTableCreateRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/flow-system-tables/{id}": {
-      "get": {
-        "tags": [
-          "Flow System Tables"
-        ],
-        "summary": "Get detail for flow-system-tables",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Authenticated read, including inactive historical records.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/FlowSystemTableDetail"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Missing master: flow_system_master_not_found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Flow System Tables"
-        ],
-        "summary": "Update flow-system-tables",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise).",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Missing master: flow_system_master_not_found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "duplicate_entry (including duplicate stable code on create).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlowSystemTableUpdateRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/flow-system-tables/{id}/status": {
-      "patch": {
-        "tags": [
-          "Flow System Tables"
-        ],
-        "summary": "Update status for flow-system-tables",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). No hard DELETE; deactivation preserves relationships. Existence checked first; missing master returns 404.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Missing master: flow_system_master_not_found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlowMasterStatusRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/flow-system-fields": {
-      "get": {
-        "tags": [
-          "Flow System Fields"
-        ],
-        "summary": "List flow-system-fields",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Authenticated read, including inactive historical records.",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": "integer",
-              "default": 1
-            },
-            "description": "Invalid/nonpositive values fall back to 1."
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "schema": {
-              "type": "integer",
-              "default": 10
-            },
-            "description": "Invalid/nonpositive values fall back to 10."
-          },
-          {
-            "in": "query",
-            "name": "search",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Search name."
-          },
-          {
-            "in": "query",
-            "name": "sort_by",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Supported: id (fallback), name, created_at, updated_at. Unknown values fall back to id."
-          },
-          {
-            "in": "query",
-            "name": "sort_order",
-            "schema": {
-              "type": "string",
-              "default": "asc"
-            },
-            "description": "desc (case-insensitive) selects descending; other values use ascending."
-          },
-          {
-            "in": "query",
-            "name": "is_active",
-            "schema": {
-              "type": "boolean"
-            },
-            "description": "Omitted/empty includes both statuses. Go ParseBool forms accepted (true/false, 1/0, t/f, T/F, TRUE/FALSE, True/False); malformed nonempty values return 400 invalid_boolean."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FlowSystemFieldListResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "Flow System Fields"
-        ],
-        "summary": "Create flow-system-fields",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). Creates active master; code is required and unique. Returns an action message, not a resource ID.",
-        "parameters": [],
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "duplicate_entry (including duplicate stable code on create).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlowSystemFieldCreateRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/flow-system-fields/{id}": {
-      "get": {
-        "tags": [
-          "Flow System Fields"
-        ],
-        "summary": "Get detail for flow-system-fields",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Authenticated read, including inactive historical records.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/FlowSystemField"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Missing master: flow_system_master_not_found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Flow System Fields"
-        ],
-        "summary": "Update flow-system-fields",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise).",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Missing master: flow_system_master_not_found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "duplicate_entry (including duplicate stable code on create).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlowSystemFieldUpdateRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/flow-system-fields/{id}/status": {
-      "patch": {
-        "tags": [
-          "Flow System Fields"
-        ],
-        "summary": "Update status for flow-system-fields",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). No hard DELETE; deactivation preserves relationships. Existence checked first; missing master returns 404.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body, validation_error or invalid_boolean as applicable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Admin role required: insufficient_role. Missing/invalid role context is 401.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Missing master: flow_system_master_not_found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlowMasterStatusRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/flow-systems/{id}/tables": {
-      "put": {
-        "tags": [
-          "Flow Systems"
-        ],
-        "summary": "Replace all tables relationships",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required. Raw JSON array, replace-all atomically. [] clears links without deleting masters. Missing body, null and object wrappers are invalid. Child IDs must be positive and unique by ID (even if other attributes differ). Duplicate sort_order is allowed; omitted order defaults to zero; signed 32-bit range accepted. Read order is relationship sort_order then child master ID, never request-array position. Missing parent/child is 404 before replacement. Inactive references are accepted.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlowSystemTablesRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body or validation_error; null, wrappers, duplicate/nonpositive IDs, invalid order, and missing/null need_input are rejected.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Admin role required: insufficient_role.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Missing parent or child: flow_system_master_not_found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "duplicate_entry from the existing master write-error mapper; duplicate request child IDs are 400 validation_error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/flow-system-tables/{id}/fields": {
-      "put": {
-        "tags": [
-          "Flow System Tables"
-        ],
-        "summary": "Replace all fields relationships",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required. Raw JSON array, replace-all atomically. [] clears links without deleting masters. Missing body, null and object wrappers are invalid. Child IDs must be positive and unique by ID (even if other attributes differ). Duplicate sort_order is allowed; omitted order defaults to zero; signed 32-bit range accepted. Read order is relationship sort_order then child master ID, never request-array position. Missing parent/child is 404 before replacement. Inactive references are accepted.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 ID."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FlowSystemTableFieldsRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
-                        }
-                      }
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param, invalid_request_body or validation_error; null, wrappers, duplicate/nonpositive IDs, invalid order, and missing/null need_input are rejected.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Admin role required: insufficient_role.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Missing parent or child: flow_system_master_not_found.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "duplicate_entry from the existing master write-error mapper; duplicate request child IDs are 400 validation_error.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/projects/{project_id}/flow-system": {
-      "get": {
-        "tags": [
-          "Projects",
-          "Flow Systems"
-        ],
-        "summary": "Get Project Flow System Preview",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Uses existing Project detail access: admin sees non-deleted Projects; other authenticated roles require owner_user_id or created_by_user_id to match. Missing/deleted/out-of-scope Project is 404, not a new 403 policy. Uses the Project detail calculation_id (highest Calculation ID), then its stored Type. No Calculation yields two null components; NULL Type yields flow_system null. Empty tables/fields are []. Inactive Types/children remain readable. Sequential reads are not a transactional snapshot. A failed non-null Calculation/Type dependency returns sanitized 500. Read-only: FE owns code-to-value mapping, manual need_input state and export. No request body or Preview query/selection override.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "project_id",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "description": "Positive signed int64 Project ID; invalid, nonpositive and out-of-range values return 400 invalid_path_param."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/BaseSuccessResponse"
-                    },
-                    {
-                      "type": "object",
-                      "required": [
-                        "status_code",
-                        "api_version",
-                        "data"
-                      ],
-                      "properties": {
-                        "data": {
-                          "$ref": "#/components/schemas/ProjectFlowSystemPreview"
-                        }
-                      }
-                    }
-                  ]
-                },
-                "example": {
-                  "status_code": 200,
-                  "api_version": "1.0.0",
-                  "data": {
-                    "project": {
-                      "project_id": 1,
-                      "project_code": "PRJ-001",
-                      "project_name": "Dry Room",
-                      "status": "tender",
-                      "is_favorite": false
-                    },
-                    "calculation": null,
-                    "flow_system": null
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "invalid_path_param (field project_id) for malformed/nonpositive/out-of-int64-range ID.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed: missing_authorization_header, invalid_bearer_token_format, invalid_access_token, unauthorized, user_not_found, inactive_user, or invalidated_access_token.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "project_not_found for missing, deleted or inaccessible Project.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Sanitized internal_server_error on database/storage failure; raw dependency details are not returned. Misconfigured authentication may return missing_user_repository. Includes missing/failing non-null selected Calculation or Type; never returned as an intentional null.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BaseErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
@@ -8255,9 +7164,9 @@
       },
       "User": {
         "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer"
+          "properties": {
+            "id": {
+              "type": "integer"
           },
           "email": {
             "type": "string"
@@ -8554,10 +7463,10 @@
                   },
                   "access_token_expired_at": {
                     "type": "string"
-                  },
+                  },    
                   "refresh_token_expired_at": {
                     "type": "string"
-                  }
+                  }          
                 }
               }
             }
@@ -8617,8 +7526,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "integer"
           },
           "project_code": {
             "type": "string"
@@ -8627,42 +7535,36 @@
             "type": "string"
           },
           "selection_no": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "priority": {
             "type": "string"
           },
           "owner_user_id": {
             "type": "integer",
-            "format": "int64"
+            "nullable": true
           },
           "created_by_user_id": {
             "type": "integer",
-            "format": "int64"
+            "nullable": true
           },
           "calculation_date": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "nullable": true
           }
-        },
-        "required": [
-          "id",
-          "project_code",
-          "project_name",
-          "priority"
-        ],
-        "description": "Runtime output. Optional properties are omitted when their source is empty/nil; they are not emitted as null unless explicitly marked nullable."
+        }
       },
       "ProjectListItem": {
         "type": "object",
         "properties": {
           "project_id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "number"
           },
           "calculation_id": {
             "type": "integer",
-            "format": "int64"
+            "nullable": true
           },
           "project_code": {
             "type": "string"
@@ -8671,10 +7573,12 @@
             "type": "string"
           },
           "selection_no": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "status": {
             "type": "string",
+            "nullable": true,
             "enum": [
               "tender",
               "won",
@@ -8683,30 +7587,25 @@
           },
           "calculation_date": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "nullable": true
           },
           "owner_user_id": {
             "type": "integer",
-            "format": "int64"
+            "nullable": true
           },
           "owner_name": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "owner_avatar": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "is_favorite": {
             "type": "boolean"
           }
-        },
-        "required": [
-          "project_id",
-          "project_code",
-          "project_name",
-          "status",
-          "is_favorite"
-        ],
-        "description": "Runtime output. Optional properties are omitted when their source is empty/nil; they are not emitted as null unless explicitly marked nullable."
+        }
       },
       "ProjectInformation": {
         "type": "object",
@@ -8876,108 +7775,104 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "integer"
           },
           "project_id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "integer"
           },
           "title": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "room_name": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "flow_air_system_id": {
             "type": "integer",
-            "format": "int64"
+            "nullable": true
           },
           "flow_air_system_name": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "system_efficiency_modifier": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "selected_models": {
             "type": "array",
-            "description": "Multiple selected product models for this calculation. Empty is []; existing order is preserved.",
+            "description": "Multiple selected product models for this calculation.",
             "items": {
               "$ref": "#/components/schemas/CalculationSelectedModel"
             }
           },
           "permeation_load": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "door_opening_load": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "fixed_opening_load": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "people_load": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "product_load": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "make_up_air_intake_load": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "other_sources_load": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "total_load": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "dehumidifier_required": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "dehumidifier_required_unit_type": {
-            "type": "string"
+            "type": "string",
+            "nullable": true
           },
           "total_air_flow": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "total_capacity": {
             "type": "number",
-            "format": "double"
+            "format": "float",
+            "nullable": true
           },
           "precooling_capacity": {
             "type": "number",
-            "format": "double"
-          },
-          "flow_system_id": {
-            "type": "integer",
-            "format": "int64",
-            "nullable": true,
-            "description": "Always present. Null for legacy/no Type selection."
-          },
-          "flow_system_name": {
-            "type": "string",
-            "nullable": true,
-            "description": "Always present. Null when Type ID is null; otherwise current master name, not a historical snapshot."
+            "format": "float",
+            "nullable": true
           }
-        },
-        "required": [
-          "id",
-          "project_id",
-          "selected_models",
-          "flow_system_id",
-          "flow_system_name"
-        ],
-        "description": "Runtime output. Optional properties are omitted when their source is empty/nil; they are not emitted as null unless explicitly marked nullable."
+        }
       },
       "CalculationSelectedModel": {
         "type": "object",
@@ -8988,8 +7883,7 @@
         "properties": {
           "selected_model_id": {
             "type": "integer",
-            "example": 5,
-            "format": "int64"
+            "example": 5
           },
           "qty": {
             "type": "integer",
@@ -9125,112 +8019,112 @@
           },
           "room_zone_length": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "room_zone_width": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "room_zone_height": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "altitude": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "outside_condition_tdb": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "outside_condition_twb": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "outside_condition_rh": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "outside_condition_w": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "surround_condition_tdb": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "surround_condition_twb": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "surround_condition_rh": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "surround_condition_w": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "target_room_condition_tdb": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "target_room_condition_rh": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "target_room_condition_tdp": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "target_room_condition_w": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "target_room_condition_coeff_1": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "target_room_condition_coeff_2": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "target_room_condition_coeff_3": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "target_room_condition_coeff_4": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "target_room_condition_coeff_5": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "door_area": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "door_area_unit": {
@@ -9239,42 +8133,42 @@
           },
           "door_opening_frequency": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "occupant": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "intentional_opening_length": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "intentional_opening_width": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "intentional_opening_height": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "intentional_opening_area": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "intentional_opening_depth": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "w_adjacent_room": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "w_adjacent_room_unit": {
@@ -9283,7 +8177,7 @@
           },
           "product": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "product_unit": {
@@ -9292,12 +8186,12 @@
           },
           "moisture_lost_percentage": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "fresh_air_flow_rate": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "fresh_air_flow_rate_unit": {
@@ -9306,27 +8200,27 @@
           },
           "fresh_air_flow_tdb": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "fresh_air_flow_twb": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "fresh_air_flow_rh": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "fresh_air_flow_w": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "other_sources": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "other_sources_unit": {
@@ -9335,22 +8229,22 @@
           },
           "other_sources_tdb": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "other_sources_twb": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "other_sources_rh": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "other_sources_w": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           }
         }
@@ -9391,10 +8285,7 @@
                 "type": "string"
               },
               "flow_air_system_id": {
-                "type": "integer",
-                "format": "int64",
-                "nullable": true,
-                "description": "Incoming Group; required to match when flow_system_id is supplied. On Update, changing Group with omitted/null Type can preserve a mismatching old Type."
+                "type": "integer"
               },
               "selected_models": {
                 "type": "array",
@@ -9406,52 +8297,51 @@
               },
               "system_efficiency_modifier": {
                 "type": "number",
-                "format": "double",
-                "nullable": true
+                "format": "float"
               },
               "permeation_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "door_opening_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "fixed_opening_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "people_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "product_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "make_up_air_intake_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "other_sources_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "total_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "dehumidifier_required": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "dehumidifier_required_unit_type": {
@@ -9461,25 +8351,18 @@
               },
               "total_air_flow": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "total_capacity": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "precooling_capacity": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
-              },
-              "flow_system_id": {
-                "type": "integer",
-                "format": "int64",
-                "minimum": 1,
-                "nullable": true,
-                "description": "Omitted/null persists SQL NULL. Supplied Type must exist and belong to incoming flow_air_system_id; active and inactive matching Types are accepted. Missing Type is 404 flow_system_not_found; absent/null/mismatching Group is 400 invalid_flow_system."
               }
             }
           },
@@ -9527,8 +8410,7 @@
             "dehumidifier_required_unit_type": "CMH",
             "total_air_flow": 3200,
             "total_capacity": 24.1,
-            "precooling_capacity": 200000,
-            "flow_system_id": 10
+            "precooling_capacity": 200000
           },
           "inputs": {
             "room_zone_type": "l_m_x_w_m_x_h_m",
@@ -9600,7 +8482,8 @@
           "project": {
             "type": "object",
             "required": [
-              "project_name"
+              "project_name",
+              "priority"
             ],
             "properties": {
               "project_name": {
@@ -9608,7 +8491,7 @@
               },
               "priority": {
                 "type": "string",
-                "description": "Optional at runtime; full update writes incoming value. Send the existing priority to preserve it."
+                "description": "Provided by frontend during full update, usually sourced from calculation detail."
               }
             }
           },
@@ -9628,10 +8511,7 @@
                 "type": "string"
               },
               "flow_air_system_id": {
-                "type": "integer",
-                "format": "int64",
-                "nullable": true,
-                "description": "Incoming Group; required to match when flow_system_id is supplied. On Update, changing Group with omitted/null Type can preserve a mismatching old Type."
+                "type": "integer"
               },
               "selected_models": {
                 "type": "array",
@@ -9643,52 +8523,52 @@
               },
               "system_efficiency_modifier": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "permeation_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "door_opening_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "fixed_opening_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "people_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "product_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "make_up_air_intake_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "other_sources_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "total_load": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "dehumidifier_required": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "dehumidifier_required_unit_type": {
@@ -9698,29 +8578,22 @@
               },
               "total_air_flow": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "total_capacity": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "precooling_capacity": {
                 "type": "number",
-                "format": "double",
+                "format": "float",
                 "nullable": true
               },
               "status": {
                 "type": "string",
-                "description": "Optional at runtime; full update writes incoming value. Calculator detail does not expose status; preserve the existing client/source convention."
-              },
-              "flow_system_id": {
-                "type": "integer",
-                "format": "int64",
-                "minimum": 1,
-                "nullable": true,
-                "description": "Omitted/null preserves existing selection; there is no clear-selection operation. Supplied Type must exist and belong to incoming flow_air_system_id; active and inactive matching Types are accepted. Missing Type is 404 flow_system_not_found; absent/null/mismatching Group is 400 invalid_flow_system."
+                "description": "Provided by frontend during full update, usually sourced from calculation detail."
               }
             }
           },
@@ -9770,8 +8643,7 @@
             "total_air_flow": 3200,
             "total_capacity": 24.1,
             "precooling_capacity": 200000,
-            "status": "completed",
-            "flow_system_id": 10
+            "status": "completed"
           },
           "inputs": {
             "room_zone_type": "l_m_x_w_m_x_h_m",
@@ -9835,26 +8707,18 @@
         "type": "object",
         "properties": {
           "project_id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "integer"
           },
           "project_code": {
             "type": "string"
           },
           "selection_no": {
-            "type": "string",
-            "description": "Omitted when empty."
+            "type": "string"
           },
           "calculation_id": {
-            "type": "integer",
-            "format": "int64"
+            "type": "integer"
           }
-        },
-        "required": [
-          "project_id",
-          "project_code",
-          "calculation_id"
-        ]
+        }
       },
       "CalculationDetail": {
         "type": "object",
@@ -9863,158 +8727,15 @@
             "$ref": "#/components/schemas/Project"
           },
           "project_information": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ProjectInformation"
-              },
-              {
-                "type": "object",
-                "properties": {
-                  "pic_name": {
-                    "type": "string"
-                  },
-                  "company_name": {
-                    "type": "string"
-                  },
-                  "address": {
-                    "type": "string"
-                  },
-                  "reference_no": {
-                    "type": "string"
-                  },
-                  "tax_percent": {
-                    "type": "number"
-                  },
-                  "creator_name": {
-                    "type": "string"
-                  },
-                  "creator_position": {
-                    "type": "string"
-                  },
-                  "quotation_date": {
-                    "type": "string"
-                  }
-                }
-              }
-            ],
-            "description": "Empty strings and nil tax_percent are omitted. Non-nil zero values remain present. Constraints narrow the shared request/response schema without changing unrelated requests."
+            "$ref": "#/components/schemas/ProjectInformation"
           },
           "calculation": {
             "$ref": "#/components/schemas/CalculationHeader"
           },
           "inputs": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/CalculationInputs"
-              },
-              {
-                "type": "object",
-                "required": [
-                  "room_zone_type",
-                  "outside_condition_type",
-                  "surround_condition_type",
-                  "target_room_condition_type",
-                  "fixed_intentional_opening_type",
-                  "additional_moisture_type",
-                  "total_load_unit_type",
-                  "room_zone_length",
-                  "room_zone_width",
-                  "room_zone_height",
-                  "altitude",
-                  "outside_condition_tdb",
-                  "outside_condition_twb",
-                  "outside_condition_rh",
-                  "outside_condition_w",
-                  "surround_condition_tdb",
-                  "surround_condition_twb",
-                  "surround_condition_rh",
-                  "surround_condition_w",
-                  "target_room_condition_tdb",
-                  "target_room_condition_rh",
-                  "target_room_condition_tdp",
-                  "target_room_condition_w",
-                  "target_room_condition_coeff_1",
-                  "target_room_condition_coeff_2",
-                  "target_room_condition_coeff_3",
-                  "target_room_condition_coeff_4",
-                  "target_room_condition_coeff_5",
-                  "door_area",
-                  "door_area_unit",
-                  "door_opening_frequency",
-                  "occupant",
-                  "intentional_opening_length",
-                  "intentional_opening_width",
-                  "intentional_opening_height",
-                  "intentional_opening_area",
-                  "intentional_opening_depth",
-                  "w_adjacent_room",
-                  "w_adjacent_room_unit",
-                  "product",
-                  "product_unit",
-                  "moisture_lost_percentage",
-                  "fresh_air_flow_rate",
-                  "fresh_air_flow_rate_unit",
-                  "fresh_air_flow_tdb",
-                  "fresh_air_flow_twb",
-                  "fresh_air_flow_rh",
-                  "fresh_air_flow_w",
-                  "other_sources",
-                  "other_sources_unit",
-                  "other_sources_tdb",
-                  "other_sources_twb",
-                  "other_sources_rh",
-                  "other_sources_w"
-                ],
-                "properties": {
-                  "room_zone_type": {
-                    "type": "string"
-                  },
-                  "outside_condition_type": {
-                    "type": "string"
-                  },
-                  "surround_condition_type": {
-                    "type": "string"
-                  },
-                  "target_room_condition_type": {
-                    "type": "string"
-                  },
-                  "fixed_intentional_opening_type": {
-                    "type": "string"
-                  },
-                  "additional_moisture_type": {
-                    "type": "string"
-                  },
-                  "total_load_unit_type": {
-                    "type": "string"
-                  },
-                  "door_area_unit": {
-                    "type": "string"
-                  },
-                  "w_adjacent_room_unit": {
-                    "type": "string"
-                  },
-                  "product_unit": {
-                    "type": "string"
-                  },
-                  "fresh_air_flow_rate_unit": {
-                    "type": "string"
-                  },
-                  "other_sources_unit": {
-                    "type": "string"
-                  }
-                }
-              }
-            ],
-            "description": "Every input key is present; strings are non-null (may be empty), numbers are nullable. This output constraint does not make request fields required."
+            "$ref": "#/components/schemas/CalculationInputs"
           }
-        },
-        "required": [
-          "project",
-          "project_information",
-          "calculation",
-          "inputs"
-        ],
-        "description": "Exact Calculator detail aggregate, also reused by Project Flow System Preview. No nested Flow Tables/Fields. Optional output fields use omission, not null; inputs always emit every property."
+        }
       },
       "ReportSettingRequest": {
         "type": "object",
@@ -10157,7 +8878,7 @@
           },
           "system_efficiency_modifier": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "selected_models": {
@@ -10168,47 +8889,47 @@
           },
           "permeation_load": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "door_opening_load": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "fixed_opening_load": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "people_load": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "product_load": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "make_up_air_intake_load": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "other_sources_load": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "total_load": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "dehumidifier_required": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "dehumidifier_required_unit_type": {
@@ -10217,17 +8938,17 @@
           },
           "total_air_flow": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "total_capacity": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           },
           "precooling_capacity": {
             "type": "number",
-            "format": "double",
+            "format": "float",
             "nullable": true
           }
         }
@@ -10337,30 +9058,7 @@
           },
           "discount_value": {
             "type": "number",
-            "format": "float",
-            "description": "Legacy: mirrors the first item of discounts."
-          },
-          "discounts": {
-            "type": "array",
-            "description": "Discounts applied in order, each on the total left by the previous one.",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string"
-                },
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "percentage"
-                  ]
-                },
-                "value": {
-                  "type": "number",
-                  "format": "float"
-                }
-              }
-            }
+            "format": "float"
           },
           "term_and_conditions": {
             "type": "string"
@@ -10697,29 +9395,12 @@
       },
       "FlowAirSystem": {
         "type": "object",
-        "required": [
-          "id",
-          "code",
-          "name",
-          "is_active",
-          "sort_order"
-        ],
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1
-          },
-          "code": {
-            "type": "string",
-            "nullable": true,
-            "description": "Stable code; historical Group/Type rows may have null. Normal updates preserve it."
+            "type": "integer"
           },
           "name": {
             "type": "string"
-          },
-          "is_active": {
-            "type": "boolean"
           },
           "sort_order": {
             "type": "integer"
@@ -10733,15 +9414,12 @@
         ],
         "properties": {
           "name": {
-            "type": "string",
-            "minLength": 1
+            "type": "string"
           },
           "sort_order": {
-            "type": "integer",
-            "default": 0
+            "type": "integer"
           }
-        },
-        "description": "Metadata update preserves stable code. Omitted sort_order becomes zero."
+        }
       },
       "FlowAirSystemListResponse": {
         "allOf": [
@@ -10750,23 +9428,12 @@
           },
           {
             "type": "object",
-            "required": [
-              "status_code",
-              "api_version",
-              "data"
-            ],
             "properties": {
               "data": {
                 "type": "object",
-                "required": [
-                  "total_data",
-                  "returned_data_count",
-                  "list_data"
-                ],
                 "properties": {
                   "total_data": {
                     "type": "integer",
-                    "format": "int64",
                     "example": 100
                   },
                   "returned_data_count": {
@@ -10777,8 +9444,7 @@
                     "type": "array",
                     "items": {
                       "$ref": "#/components/schemas/FlowAirSystem"
-                    },
-                    "description": "Empty collection is []."
+                    }
                   }
                 }
               }
@@ -10788,31 +9454,206 @@
       },
       "FlowSystem": {
         "type": "object",
-        "required": [
-          "id",
-          "code",
-          "flow_air_system_id",
-          "name",
-          "image_url",
-          "description",
-          "is_active",
-          "sort_order"
-        ],
         "properties": {
           "id": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1
-          },
-          "code": {
-            "type": "string",
-            "nullable": true,
-            "description": "Stable code; historical Group/Type rows may have null. Normal updates preserve it."
+            "type": "integer"
           },
           "flow_air_system_id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "image_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "sort_order": {
+            "type": "integer"
+          },
+          "model_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "series_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "dehumidifier_capacity": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "dehumidifier_capacity_unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "dehumidifier_qty": {
             "type": "integer",
-            "format": "int64",
-            "minimum": 1
+            "nullable": true
+          },
+          "pre_cooling_capacity": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "pre_cooling_capacity_unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "pre_cooling_qty": {
+            "type": "integer",
+            "nullable": true
+          },
+          "post_cooling_capacity": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "post_cooling_capacity_unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "post_cooling_qty": {
+            "type": "integer",
+            "nullable": true
+          }
+        }
+      },
+      "FlowSystemOption": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "flow_system_id": {
+            "type": "integer"
+          },
+          "option_name": {
+            "type": "string"
+          },
+          "model_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "series_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "dehumidifier_capacity": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "dehumidifier_capacity_unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "dehumidifier_qty": {
+            "type": "integer",
+            "nullable": true
+          },
+          "pre_cooling_capacity": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "pre_cooling_capacity_unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "pre_cooling_qty": {
+            "type": "integer",
+            "nullable": true
+          },
+          "post_cooling_capacity": {
+            "type": "number",
+            "format": "float",
+            "nullable": true
+          },
+          "post_cooling_capacity_unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "post_cooling_qty": {
+            "type": "integer",
+            "nullable": true
+          },
+          "diagram_image_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "sort_order": {
+            "type": "integer"
+          }
+        }
+      },
+      "FlowSystemOptionRequest": {
+        "type": "object",
+        "required": [
+          "option_name"
+        ],
+        "properties": {
+          "option_name": {
+            "type": "string"
+          },
+          "model_name": {
+            "type": "string"
+          },
+          "series_name": {
+            "type": "string"
+          },
+          "dehumidifier_capacity": {
+            "type": "number",
+            "format": "float"
+          },
+          "dehumidifier_capacity_unit": {
+            "type": "string"
+          },
+          "dehumidifier_qty": {
+            "type": "integer"
+          },
+          "pre_cooling_capacity": {
+            "type": "number",
+            "format": "float"
+          },
+          "pre_cooling_capacity_unit": {
+            "type": "string"
+          },
+          "pre_cooling_qty": {
+            "type": "integer"
+          },
+          "post_cooling_capacity": {
+            "type": "number",
+            "format": "float"
+          },
+          "post_cooling_capacity_unit": {
+            "type": "string"
+          },
+          "post_cooling_qty": {
+            "type": "integer"
+          },
+          "diagram_image_url": {
+            "type": "string"
+          },
+          "sort_order": {
+            "type": "integer"
+          }
+        }
+      },
+      "FlowSystemRequest": {
+        "type": "object",
+        "required": [
+          "flow_air_system_id",
+          "name"
+        ],
+        "properties": {
+          "flow_air_system_id": {
+            "type": "integer"
           },
           "name": {
             "type": "string"
@@ -10823,85 +9664,79 @@
           "description": {
             "type": "string"
           },
-          "is_active": {
-            "type": "boolean"
-          },
           "sort_order": {
             "type": "integer"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FlowSystemOptionRequest"
+            }
           }
         }
       },
       "FlowSystemCreateMultipartRequest": {
         "type": "object",
         "required": [
-          "code",
           "flow_air_system_id",
           "name",
+          "options",
           "image_file"
         ],
         "properties": {
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100,
-            "description": "Required unique stable code on create; immutable through normal update. No code normalization or semantic mapping is performed."
-          },
           "flow_air_system_id": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1
+            "type": "integer"
           },
           "name": {
-            "type": "string",
-            "minLength": 1
+            "type": "string"
           },
           "image_file": {
             "type": "string",
             "format": "binary",
-            "description": "Main Type image. Supported content formats: png, jpg, webp, gif, svg, bmp, tiff, avif."
+            "description": "Required main cover image file uploaded via multipart/form-data."
           },
           "description": {
-            "type": "string",
-            "default": ""
+            "type": "string"
           },
           "sort_order": {
-            "type": "integer",
-            "default": 0
+            "type": "integer"
+          },
+          "options": {
+            "type": "string",
+            "description": "JSON string array of FlowSystemOptionRequest. Per-option diagram files can be sent using multipart keys option_diagram_0, option_diagram_1, and so on."
           }
-        },
-        "description": "Multipart only. image_file is required. Creates active Type metadata; manage Tables separately."
+        }
       },
       "FlowSystemMultipartRequest": {
         "type": "object",
         "required": [
           "flow_air_system_id",
-          "name"
+          "name",
+          "options"
         ],
         "properties": {
           "flow_air_system_id": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1
+            "type": "integer"
           },
           "name": {
-            "type": "string",
-            "minLength": 1
+            "type": "string"
           },
           "image_file": {
             "type": "string",
             "format": "binary",
-            "description": "Main Type image. Supported content formats: png, jpg, webp, gif, svg, bmp, tiff, avif."
+            "description": "Optional main cover image file uploaded via multipart/form-data. If omitted on update, the existing image is retained."
           },
           "description": {
-            "type": "string",
-            "default": ""
+            "type": "string"
           },
           "sort_order": {
-            "type": "integer",
-            "default": 0
+            "type": "integer"
+          },
+          "options": {
+            "type": "string",
+            "description": "JSON string array of FlowSystemOptionRequest. Per-option diagram files can be sent using multipart keys option_diagram_0, option_diagram_1, and so on."
           }
-        },
-        "description": "Multipart metadata update preserves code and relationships. image_file omitted retains existing image; supplied replaces it. Omitted description/order become empty string/zero. Reparenting does not rewrite Calculations."
+        }
       },
       "FlowSystemDetail": {
         "allOf": [
@@ -10910,26 +9745,12 @@
           },
           {
             "type": "object",
-            "required": [
-              "flow_air_system_code",
-              "flow_air_system_name",
-              "tables"
-            ],
             "properties": {
-              "flow_air_system_code": {
-                "type": "string",
-                "nullable": true,
-                "description": "Stable code; historical Group/Type rows may have null. Normal updates preserve it."
-              },
-              "flow_air_system_name": {
-                "type": "string"
-              },
-              "tables": {
+              "options": {
                 "type": "array",
                 "items": {
-                  "$ref": "#/components/schemas/FlowSystemRelatedTable"
-                },
-                "description": "Ordered by relationship sort_order ASC, then Table master ID ASC; empty is []. Inactive related Tables remain readable."
+                  "$ref": "#/components/schemas/FlowSystemOption"
+                }
               }
             }
           }
@@ -10945,9 +9766,6 @@
             "properties": {
               "flow_air_system_id": {
                 "type": "integer"
-              },
-              "is_active": {
-                "type": "boolean"
               }
             }
           }
@@ -10960,23 +9778,12 @@
           },
           {
             "type": "object",
-            "required": [
-              "status_code",
-              "api_version",
-              "data"
-            ],
             "properties": {
               "data": {
                 "type": "object",
-                "required": [
-                  "total_data",
-                  "returned_data_count",
-                  "list_data"
-                ],
                 "properties": {
                   "total_data": {
                     "type": "integer",
-                    "format": "int64",
                     "example": 100
                   },
                   "returned_data_count": {
@@ -10987,8 +9794,7 @@
                     "type": "array",
                     "items": {
                       "$ref": "#/components/schemas/FlowSystem"
-                    },
-                    "description": "Empty collection is []."
+                    }
                   }
                 }
               }
@@ -11617,489 +10423,6 @@
             "format": "float"
           }
         }
-      },
-      "FlowAirSystemCreateRequest": {
-        "type": "object",
-        "required": [
-          "code",
-          "name"
-        ],
-        "properties": {
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100,
-            "description": "Required unique stable code on create; immutable through normal update. No code normalization or semantic mapping is performed."
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1
-          },
-          "sort_order": {
-            "type": "integer",
-            "default": 0
-          }
-        }
-      },
-      "FlowSystemRelatedField": {
-        "type": "object",
-        "required": [
-          "id",
-          "code",
-          "name",
-          "unit",
-          "is_active",
-          "need_input",
-          "sort_order"
-        ],
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1
-          },
-          "code": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "unit": {
-            "type": "string",
-            "nullable": true
-          },
-          "is_active": {
-            "type": "boolean"
-          },
-          "need_input": {
-            "type": "boolean"
-          },
-          "sort_order": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
-      "FlowSystemRelatedTable": {
-        "type": "object",
-        "required": [
-          "id",
-          "code",
-          "name",
-          "is_active",
-          "sort_order",
-          "fields"
-        ],
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1
-          },
-          "code": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "is_active": {
-            "type": "boolean"
-          },
-          "sort_order": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "fields": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/FlowSystemRelatedField"
-            },
-            "description": "Ordered by relationship sort_order ASC, then Field master ID ASC; empty is []. Inactive related Fields remain readable."
-          }
-        }
-      },
-      "FlowMasterStatusRequest": {
-        "type": "object",
-        "required": [
-          "is_active"
-        ],
-        "properties": {
-          "is_active": {
-            "type": "boolean"
-          }
-        },
-        "description": "Explicit boolean required; false is valid; missing/null rejected. Deactivation never deletes or detaches relationships."
-      },
-      "FlowSystemTable": {
-        "type": "object",
-        "required": [
-          "id",
-          "code",
-          "name",
-          "is_active",
-          "created_at",
-          "updated_at"
-        ],
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1
-          },
-          "code": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "is_active": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "FlowSystemTableDetail": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/FlowSystemTable"
-          },
-          {
-            "type": "object",
-            "required": [
-              "fields"
-            ],
-            "properties": {
-              "fields": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/FlowSystemRelatedField"
-                },
-                "description": "Relationship sort_order ASC then Field master ID ASC; empty is []. Includes inactive Fields."
-              }
-            }
-          }
-        ]
-      },
-      "FlowSystemField": {
-        "type": "object",
-        "required": [
-          "id",
-          "code",
-          "name",
-          "is_active",
-          "created_at",
-          "updated_at",
-          "unit"
-        ],
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64",
-            "minimum": 1
-          },
-          "code": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "is_active": {
-            "type": "boolean"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "unit": {
-            "type": "string",
-            "nullable": true
-          }
-        }
-      },
-      "FlowSystemTableCreateRequest": {
-        "type": "object",
-        "required": [
-          "code",
-          "name"
-        ],
-        "properties": {
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100,
-            "description": "Required unique stable code on create; immutable through normal update. No code normalization or semantic mapping is performed."
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 150
-          }
-        }
-      },
-      "FlowSystemTableUpdateRequest": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 150
-          }
-        },
-        "description": "Preserves stable code; metadata replacement, not PATCH."
-      },
-      "FlowSystemFieldCreateRequest": {
-        "type": "object",
-        "required": [
-          "code",
-          "name"
-        ],
-        "properties": {
-          "code": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 100,
-            "description": "Required unique stable code on create; immutable through normal update. No code normalization or semantic mapping is performed."
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 150
-          },
-          "unit": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 30,
-            "description": "Omitted/null on create stores NULL; omitted/null on update clears the previous unit. Empty string remains an empty string."
-          }
-        }
-      },
-      "FlowSystemFieldUpdateRequest": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 150
-          },
-          "unit": {
-            "type": "string",
-            "nullable": true,
-            "maxLength": 30,
-            "description": "Omitted/null on create stores NULL; omitted/null on update clears the previous unit. Empty string remains an empty string."
-          }
-        },
-        "description": "Preserves stable code; metadata replacement, not PATCH."
-      },
-      "FlowSystemTableListResponse": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/BaseSuccessResponse"
-          },
-          {
-            "type": "object",
-            "required": [
-              "status_code",
-              "api_version",
-              "data"
-            ],
-            "properties": {
-              "data": {
-                "type": "object",
-                "required": [
-                  "total_data",
-                  "returned_data_count",
-                  "list_data"
-                ],
-                "properties": {
-                  "total_data": {
-                    "type": "integer",
-                    "format": "int64",
-                    "example": 100
-                  },
-                  "returned_data_count": {
-                    "type": "integer",
-                    "example": 10
-                  },
-                  "list_data": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/FlowSystemTable"
-                    },
-                    "description": "Empty collection is []."
-                  }
-                }
-              }
-            }
-          }
-        ]
-      },
-      "FlowSystemFieldListResponse": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/BaseSuccessResponse"
-          },
-          {
-            "type": "object",
-            "required": [
-              "status_code",
-              "api_version",
-              "data"
-            ],
-            "properties": {
-              "data": {
-                "type": "object",
-                "required": [
-                  "total_data",
-                  "returned_data_count",
-                  "list_data"
-                ],
-                "properties": {
-                  "total_data": {
-                    "type": "integer",
-                    "format": "int64",
-                    "example": 100
-                  },
-                  "returned_data_count": {
-                    "type": "integer",
-                    "example": 10
-                  },
-                  "list_data": {
-                    "type": "array",
-                    "items": {
-                      "$ref": "#/components/schemas/FlowSystemField"
-                    },
-                    "description": "Empty collection is []."
-                  }
-                }
-              }
-            }
-          }
-        ]
-      },
-      "FlowSystemTablesRequest": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": [
-            "flow_system_table_id"
-          ],
-          "properties": {
-            "flow_system_table_id": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "sort_order": {
-              "type": "integer",
-              "format": "int32",
-              "minimum": -2147483648,
-              "maximum": 2147483647,
-              "default": 0
-            }
-          }
-        },
-        "example": [
-          {
-            "flow_system_table_id": 11,
-            "sort_order": 1
-          }
-        ],
-        "description": "Raw JSON array, replace-all atomically. [] clears links without deleting masters. Missing body, null and object wrappers are invalid. Child IDs must be positive and unique by ID (even if other attributes differ). Duplicate sort_order is allowed; omitted order defaults to zero; signed 32-bit range accepted. Read order is relationship sort_order then child master ID, never request-array position. Missing parent/child is 404 before replacement. Inactive references are accepted."
-      },
-      "FlowSystemTableFieldsRequest": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "required": [
-            "flow_system_field_id",
-            "need_input"
-          ],
-          "properties": {
-            "flow_system_field_id": {
-              "type": "integer",
-              "format": "int64",
-              "minimum": 1
-            },
-            "need_input": {
-              "type": "boolean",
-              "description": "Required explicit boolean; false is valid; omitted/null rejected. Stored on the Table-to-Field relationship."
-            },
-            "sort_order": {
-              "type": "integer",
-              "format": "int32",
-              "minimum": -2147483648,
-              "maximum": 2147483647,
-              "default": 0
-            }
-          }
-        },
-        "example": [
-          {
-            "flow_system_field_id": 21,
-            "need_input": false,
-            "sort_order": 1
-          }
-        ],
-        "description": "Raw JSON array, replace-all atomically. [] clears links without deleting masters. Missing body, null and object wrappers are invalid. Child IDs must be positive and unique by ID (even if other attributes differ). Duplicate sort_order is allowed; omitted order defaults to zero; signed 32-bit range accepted. Read order is relationship sort_order then child master ID, never request-array position. Missing parent/child is 404 before replacement. Inactive references are accepted."
-      },
-      "ProjectFlowSystemPreview": {
-        "type": "object",
-        "required": [
-          "project",
-          "calculation",
-          "flow_system"
-        ],
-        "properties": {
-          "project": {
-            "$ref": "#/components/schemas/ProjectListItem"
-          },
-          "calculation": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CalculationDetail"
-              },
-              {
-                "type": "object",
-                "nullable": true,
-                "enum": [
-                  null
-                ]
-              }
-            ]
-          },
-          "flow_system": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/FlowSystemDetail"
-              },
-              {
-                "type": "object",
-                "nullable": true,
-                "enum": [
-                  null
-                ]
-              }
-            ]
-          }
-        },
-        "description": "All three keys always present. Project is the existing Project detail output. No Calculation: calculation and flow_system null. NULL Type: calculation aggregate present, flow_system null. Non-null missing dependency is sanitized 500, never intentional null. Current master metadata, including inactive records; no mapped values or preview persistence."
       }
     }
   }
