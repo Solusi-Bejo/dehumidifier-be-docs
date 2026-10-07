@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Dehumidifier API",
-    "version": "1.1.0 RC2",
+    "version": "1.1.0 RC3",
     "description": "API specification for the Dehumidifier Application, covering authentication, account management, project and quotation workflows, product and technical data management, flow system configuration, and dehumidifier calculation services."
   },
   "servers": [
@@ -4253,7 +4253,7 @@
           "Flow Systems"
         ],
         "summary": "Create flow-systems",
-        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). Creates active master; code is required and unique. Returns an action message, not a resource ID. Multipart metadata/image only; relationship management is separate. Invalid Group FK is a sanitized 500, not a dedicated Group-not-found validation response.",
+        "description": "Bearer JWT and current active database user required under normal configuration. Development authentication bypass headers work only when explicitly enabled by server configuration. Admin role required (403 insufficient_role otherwise). Creates active master; code is required and unique. Returns the created resource ID and action message. Multipart metadata/image only; relationship management is separate. Invalid Group FK is a sanitized 500, not a dedicated Group-not-found validation response.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4284,7 +4284,7 @@
                       ],
                       "properties": {
                         "data": {
-                          "$ref": "#/components/schemas/ActionMessage"
+                          "$ref": "#/components/schemas/FlowSystemMasterCreateResponse"
                         }
                       }
                     }
